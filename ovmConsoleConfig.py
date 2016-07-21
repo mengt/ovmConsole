@@ -4,6 +4,7 @@
 import os, sys
 
 class Config:
+    '''色彩表'''
     instance = None
     
     def __init__(self):

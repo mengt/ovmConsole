@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#-*-conding:utf-8-*-
+#-*-coding:utf-8-*-
 
 import syslog
 from ovmConsoleBases import *
@@ -17,7 +17,7 @@ class ovmLogger:
             cls.__instance = ovmLogger()
         return cls.__instance
 
-    def log(self, inPriority, *inParams):
+    def Log(self, inPriority, *inParams):
         for param in inParams:
             syslog.syslog(inPriority, str(param))
 

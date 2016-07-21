@@ -4,7 +4,7 @@
 import imp, os, re, sys, traceback
 from ovmConsoleLog import *
 
-class  importer:
+class Importer:
 	"""docstring for  importer"""
 	plugIns = {}
 	resources = {}
@@ -30,8 +30,9 @@ class  importer:
 							try: ovmLogError(*traceback.format_tb(sys.exc_info()[2]))
 							except: pass
 							try: ovmLogError("*** plugIn '"+ importerName +"' failed to load:" + str(e))
+							except: pass
 						finally:
-							if fileObj in not None:
+							if fileObj is not None:
 								fileObj.close()
 
 	@classmethod

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#-*-conding:utf-8-*-
+#-*-coding:utf-8-*-
 
 import curses, sys, commands
 
@@ -9,6 +9,7 @@ from ovmConsoleLang import *
 from ovmConsoleState import *
 
 class CursesPalette:
+    '''curses ui 调色板'''
     pairIndex = 1
     colours = {}
 
@@ -18,6 +19,7 @@ class CursesPalette:
 
     @classmethod
     def ColourCreate(cls, inForeground, inBackground):
+        '''获得自定义的UI成对背景色,inForeground前景色,inBackground背景色'''
         thisIndex = cls.pairIndex
         curses.init_pair(thisIndex, inForeground, inBackground)
         cls.pairIndex += 1
@@ -25,16 +27,19 @@ class CursesPalette:
     
     @classmethod
     def DefineColours(cls):
+        '''定义颜色''' 
         cls.pairIndex = 1
         config = Config.Inst()
 
         if curses.can_change_color():
+            #查询此多色终端是否可以重新定义颜色
             # Define colours on colour-changing terminals - these are terminals with the ccc
             # flag in their capabilities in terminfo
             prefix = ''
                 
             # Some terminals advertise that they can change colours but don't,
             # so the following keeps things at least legible in that case
+            #颜色重新定义
             fgBright = curses.COLOR_WHITE
             fgNormal = curses.COLOR_YELLOW
             fgDark = curses.COLOR_GREEN
@@ -51,15 +56,17 @@ class CursesPalette:
             
         else:
             # Set sensible defaults for non-colour-changing terminals
-            fgBright = curses.COLOR_WHITE
-            fgNormal = curses.COLOR_WHITE
-            fgDark = curses.COLOR_WHITE
-            bgDark = curses.COLOR_BLACK # Ensure bgDark != bgBright for MODAL_HIGHLIGHT colour
+            fgBright = curses.COLOR_WHITE #白
+            fgNormal = curses.COLOR_WHITE #白
+            fgDark = curses.COLOR_WHITE #白
+            bgDark = curses.COLOR_BLACK #黑 Ensure bgDark != bgBright for MODAL_HIGHLIGHT colour
             
-            bgNormal = curses.COLOR_RED
-            bgBright = curses.COLOR_RED
+            bgNormal = curses.COLOR_RED #红
+            bgBright = curses.COLOR_RED #红
 
         if curses.has_colors():
+            #查询此终端是不是多种颜色终端
+            #设置多色
             cls.colours['MAIN_BASE'] = cls.ColourCreate(fgNormal, bgNormal)
             cls.colours['MENU_BASE'] = cls.ColourCreate(fgNormal, bgNormal)
             cls.colours['MENU_BRIGHT'] = cls.ColourCreate(fgBright, bgNormal)
@@ -75,7 +82,7 @@ class CursesPalette:
             cls.colours['HELP_FLASH'] = cls.ColourCreate(fgBright, bgDark) | curses.A_BLINK
             cls.colours['TOPLINE_BASE'] = cls.ColourCreate(fgDark, bgDark)
         else:
-            # Monochrome terminal
+            # 单色终端
             for name in ['MAIN_BASE', 'MENU_BASE', 'MENU_BRIGHT', 'MENU_HIGHLIGHT',
                          'MENU_SELECTED', 'MODAL_BASE', 'MODAL_BRIGHT', 'MODAL_HIGHLIGHT',
                          'MODAL_SELECTED', 'MODAL_FLASH', 'HELP_BASE', 'HELP_BRIGHT',
@@ -90,6 +97,7 @@ class CursesPalette:
                     cls.colours[key] |= curses.A_BOLD
 
 class CursesPane:
+    '''curses 弹出框父类'''
     debugBackground = 0
     
     def __init__(self, inXPos, inYPos, inXSize, inYSize, inXOffset, inYOffset):
@@ -110,15 +118,19 @@ class CursesPane:
         return self.win
 
     def XSize(self):
+        '''获得屏幕宽度'''
         return self.xSize
         
     def YSize(self):
+        '''获得屏幕高度'''
         return self.ySize
         
     def XPos(self):
+        '''获得pos窗口宽度'''
         return self.xPos
         
     def YPos(self):
+        '''获得pos窗口高度度'''
         return self.yPos
         
     def XOffset(self):
@@ -128,35 +140,42 @@ class CursesPane:
         return self.yOffset
         
     def OffsetSet(self,  inXOffset, inYOffset):
+        '''设置集中后续窗口的x/y的值'''
         self.xOffset = inXOffset
         self.yOffset = inYOffset
 
     def YClipMinSet(self, inYClipMin):
+        '''窗口裁剪大小不能大于屏幕大小'''
         if inYClipMin < 0 or inYClipMin > self.ySize:
             raise Exception("Bad YClipMin "+str(inYClipMin))
         self.yClipMin = inYClipMin
         
     def YClipMaxSet(self, inYClipMax):
+        '''窗口裁剪大小不能大于屏幕大小'''
         if inYClipMax > self.ySize:
             raise Exception("Bad YClipMax "+str(inYClipMax))
         self.yClipMax = inYClipMax
 
     def TitleSet(self, inTitle):
+        #表头设置
         self.title = inTitle
         
-    def ClippedAddStr(self,  inString, inX,  inY,  inColour): # Internal use
+    def ClippedAddStr(self,  inString, inX,  inY,  inColour): 
+        #屏幕剪辑
+        # Internal use
         xPos = inX
         clippedStr = inString
         
         # Is text on the screen at all?
+        #文本屏幕
         if inY >= self.yClipMin and inY < self.yClipMax and xPos < self.xSize:
 
-            # Clip against left hand side
+            # 裁剪文件左边
             if xPos < 0:
                 clippedStr = clippedStr[-xPos:]
                 xPos = 0
 
-            # Clip against right hand side
+            # 裁剪文本右边
             clippedStr = clippedStr[:self.xSize - xPos]
             
             if len(clippedStr) > 0:
@@ -275,6 +294,7 @@ class CursesPane:
         return retVal
 
 class CursesWindow(CursesPane):
+    '''curses弹出窗口'''
     def __init__(self, inXPos, inYPos, inXSize, inYSize, inParent):
         CursesPane.__init__(self, inXPos, inYPos, inXSize, inYSize, inParent.xOffset, inParent.yOffset)
 
@@ -293,22 +313,26 @@ class CursesWindow(CursesPane):
         del self.win
 
 class CursesScreen(CursesPane):
+    '''curses的屏幕窗口'''
     def __init__(self):
-        
+        #实例化curses窗口
         self.win = curses.initscr()
-
+        #获得屏幕的宽和高
         (ySize, xSize) = self.win.getmaxyx()
         CursesPane.__init__(self, 0, 0, xSize, ySize, 0, 0)
-        curses.noecho()
+        #关闭对应的key,并输入cbreak模式 　　
+        #键盘输入不执行缓冲在
+        curses.noecho() 
         curses.cbreak()
+        #开启颜色配置
         curses.start_color()
         CursesPalette.DefineColours()
         try:
-            curses.curs_set(0) # Make cursor invisible
+            curses.curs_set(0) # 隐藏光标
         except:
             pass
         self.win.keypad(1)
-        self.win.timeout(1000) # Return from getkey after x milliseconds if no key pressed
+        self.win.timeout(1000) # Return from getkey after x milliseconds if no key pressed超时1000秒
                 
     def Exit(self):
         curses.nocbreak()

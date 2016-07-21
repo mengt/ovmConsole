@@ -18,23 +18,7 @@ def main():
         # it may be that the screen size has changed
         app.AssertScreenSize()
         # if we get here then it was some other problem
-        raise
-    # if '--shelltimeout' in sys.argv:
-    #     # Print a shell timeout value, suitable for TMOUT=`xsconsole --shelltimeout`
-    #     if Config.Inst().AllShellsTimeout():
-    #         print State.Inst().AuthTimeoutSeconds()
-    #     else:
-    #         print
-    # else:
-    #     app = App.Inst()
-    #     app.Build( ['plugins-base', 'plugins-oem', 'plugins-extras'] )
-    #     try:
-    #         app.Enter()
-    #     except Exception, e:
-    #         # it may be that the screen size has changed
-    #         app.AssertScreenSize()
-    #         # if we get here then it was some other problem
-    #         raise
+        raise e
 
 if __name__ == "__main__":
     try:
@@ -42,7 +26,7 @@ if __name__ == "__main__":
     except Exception, e:
         # Add backtrace to log
         try:
-            trace = traceback.format_tb(sys.exc_info()[2])
+            trace = traceback.format_tb(sys.exc_info()[2])#获取异常的详情信息
         except:
             trace = ['Traceback not available']
         ovmLogFatal(*trace)

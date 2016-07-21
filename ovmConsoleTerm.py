@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#-*-conding:utf-8-*-
+#-*-coding:utf-8-*-
 
 import sys, os, time, string
 import curses
@@ -10,6 +10,8 @@ from ovmConsoleImporter import *
 from ovmConsoleBases import *
 from ovmConsoleLog import *
 from ovmConsoleLang import *
+from ovmConsoleData import *
+from ovmConsoleHotData import *
 
 
 
@@ -32,37 +34,38 @@ class App:
 
     def Build(self, inDirs = None):
         # Search for the app plugins and include them
+        #查找并且导入该设备下的所有包文件
         Importer.Reset()
         for dir in inDirs:
             Importer.ImportRelativeDir(dir)
-    
+
     def Enter(self):
         startTime = time.time()
-        # Data.Inst().Update()
+        Data.Inst().Update()
         elapsedTime = time.time() - startTime
-        XSLog('Loaded initial xapi and system data in %.3f seconds' % elapsedTime)
+        ovmLog('Loaded initial xapi and system data in %.3f seconds' % elapsedTime)
         
         doQuit = False
         
-        # if '--dump' in sys.argv:
-        #     # Testing - dump data and exit
-        #     Data.Inst().Dump()
-        #     Importer.Dump()
-        #     for key, value in HotData.Inst().guest_vm().iteritems():
-        #         localhost = HotAccessor().local_host()
-        #         vm = HotData.Inst().vm[key]
-        #         vm.metrics()
-        #         try: vm.guest_metrics()
-        #         except: pass # Not all VMs  have guest metrics
-        #         HotAccessor().pool()
-        #     HotData.Inst().Dump()
-        #     doQuit = True
+        if '--dump' in sys.argv:
+            # Testing - dump data and exit
+            Data.Inst().Dump()
+            Importer.Dump()
+            for key, value in HotData.Inst().guest_vm().iteritems():
+                localhost = HotAccessor().local_host()
+                vm = HotData.Inst().vm[key]
+                vm.metrics()
+                try: vm.guest_metrics()
+                except: pass # Not all VMs  have guest metrics
+                HotAccessor().pool()
+            HotData.Inst().Dump()
+            doQuit = True
         
-        # RemoteTest.Inst().SetApp(self)
+        RemoteTest.Inst().SetApp(self)
         
-        # # Reinstate keymap
-        # if State.Inst().Keymap() is not None:
-        #     Data.Inst().KeymapSet(State.Inst().Keymap())
+        Reinstate keymap
+        if State.Inst().Keymap() is not None:
+            Data.Inst().KeymapSet(State.Inst().Keymap())
         
         while not doQuit:
             try:
@@ -76,37 +79,43 @@ class App:
                         os.system('/bin/stty stop ^-') # Disable Ctrl-S as suspend
 
                     os.environ["ESCDELAY"] = "50" # Speed up processing of the escape key
-                    
+                    #初始化屏幕窗口,可以获得屏幕的x/y数
                     self.cursesScreen = CursesScreen()
+                    #设置渲染器
                     self.renderer = Renderer()
+                    #获得一个布局的对象
                     self.layout = Layout.NewInst()
+                    #将初始化的屏幕当做一个父窗口
                     self.layout.ParentSet(self.cursesScreen)
+                    #设置父窗口的集中后续窗口的值
                     self.layout.WriteParentOffset(self.cursesScreen)
+                    #创建并设置窗口列表
                     self.layout.Create()
+                    #在父窗口上创建一个主窗口
                     self.layout.ParentSet(self.layout.Window(self.layout.WIN_MAIN))
                     self.layout.CreateRootDialogue(RootDialogue(self.layout, self.layout.Window(self.layout.WIN_MAIN)))
                     self.layout.TransientBannerHandlerSet(App.TransientBannerHandler)
                     
-                    if State.Inst().WeStoppedXAPI():
-                        # Restart XAPI if we crashed after stopping it
-                        Data.Inst().StartXAPI()
-                        Data.Inst().Update()
+                    # if State.Inst().WeStoppedXAPI():
+                    #     # Restart XAPI if we crashed after stopping it
+                    #     Data.Inst().StartXAPI()
+                    #     Data.Inst().Update()
                         
-                    if not Data.Inst().IsXAPIRunning() and State.Inst().RebootMessage() is None:
-                        XSLog("Displaying 'xapi is not running' dialogue")
-                        self.layout.PushDialogue(QuestionDialogue(
-                            Lang("The underlying Xen API xapi is not running.  This console will have reduced functionality.  "
-                                 "Would you like to attempt to restart xapi?"), lambda x: self.HandleRestartChoice(x)))
+                    # if not Data.Inst().IsXAPIRunning() and State.Inst().RebootMessage() is None:
+                    #     ovmLog("Displaying 'xapi is not running' dialogue")
+                    #     self.layout.PushDialogue(QuestionDialogue(
+                    #         Lang("The underlying Xen API xapi is not running.  This console will have reduced functionality.  "
+                    #              "Would you like to attempt to restart xapi?"), lambda x: self.HandleRestartChoice(x)))
 
-                    if Auth.Inst().IsXenAPIConnectionBroken():
-                        XSLog("Displaying 'XenAPI connection timeout' dialogue")
-                        self.layout.PushDialogue(InfoDialogue(
-                            Lang("The XenAPI connection has timed out.  This console will have reduced functionality.  "
-                                "If this host is a pool slave, the master might be unreachable.")))
+                    # if Auth.Inst().IsXenAPIConnectionBroken():
+                    #     ovmLog("Displaying 'XenAPI connection timeout' dialogue")
+                    #     self.layout.PushDialogue(InfoDialogue(
+                    #         Lang("The XenAPI connection has timed out.  This console will have reduced functionality.  "
+                    #             "If this host is a pool slave, the master might be unreachable.")))
 
                     if not Auth.Inst().IsPasswordSet() :
                         # Request password change on first boot, or if it isn't set
-                        XSLog("Displaying 'Please specify a password' dialogue and EULAs")
+                        ovmLog("Displaying 'Please specify a password' dialogue and EULAs")
                         Importer.ActivateNamedPlugIn('CHANGE_PASSWORD', Lang("Please specify a password for user 'root' before continuing"))
                         # Create a stack of EULA dialogues that must be accepted before the password dialogue is revealed
                         Importer.ActivateNamedPlugIn('EULA')
@@ -147,7 +156,7 @@ class App:
 
             except KeyboardInterrupt, e: # Catch Ctrl-C
                 ovmLog('Resetting due to Ctrl-C')
-                #Data.Reset()
+                Data.Reset()
                 sys.stderr.write("\033[H\033[J"+Lang("Resetting...")) # Clear screen and print banner
                 try:
                     time.sleep(0.5) # Prevent flicker
@@ -158,7 +167,7 @@ class App:
                 sys.stderr.write(Lang(e)+"\n")
                 doQuit = True
                 raise
-    
+   
     def NeedsRefresh(self):
         self.needsRefresh = True
     
@@ -209,9 +218,9 @@ class App:
                     Layout.Inst().PushDialogue(BannerDialogue(Lang("Press any key to access this console")))
                     Layout.Inst().Refresh()
                     Layout.Inst().DoUpdate()
-                    XSLog('Entering sleep due to inactivity - xsconsole is now blocked waiting for a keypress')
+                    ovmLog('Entering sleep due to inactivity - xsconsole is now blocked waiting for a keypress')
                     self.layout.Window(Layout.WIN_MAIN).GetKeyBlocking()
-                    XSLog('Exiting sleep')
+                    ovmLog('Exiting sleep')
                     self.lastWakeSeconds = time.time()
                     self.needsRefresh = True
                     Layout.Inst().PopDialogue()
@@ -229,7 +238,7 @@ class App:
             if gotKey == '\xc5': gotKey = "KEY_F(8)" # Handle function key mistranslation on vncterm
 
             if gotKey == 'KEY_RESIZE':
-                XSLog('Activity on another console')
+                ovmLog('Activity on another console')
                 resized = True
             elif resized and gotKey is not None:
                 if os.path.isfile("/bin/setfont"): os.system("/bin/setfont") # Restore the default font
@@ -309,28 +318,29 @@ class App:
     def HandleRestartChoice(self, inChoice):
         if inChoice == 'y':
             try:
-                XSLog('Attempting to restart xapi')
+                ovmLog('Attempting to restart xapi')
                 self.layout.TransientBanner(Lang("Restarting xapi...."))
                 Data.Inst().StartXAPI()
-                XSLog('Restarted xapi')
+                ovmLog('Restarted xapi')
             except Exception, e:
-                XSLogFailure('Failed to restart xapi', e)
+                ovmLogFailure('Failed to restart xapi', e)
                 self.layout.PushDialogue(InfoDialogue(Lang('Restart Failed'), Lang('Xapi did not restart successfully.  More information may be available in the file /var/log/messages.')))
 
     @classmethod
     def TransientBannerHandler(self, inMessage):
         layout = Layout.Inst()
-        layout.PushDialogue(BannerDialogue(inMessage))
+        #layout.PushDialogue(BannerDialogue(inMessage))
         layout.Refresh()
         layout.DoUpdate()
         layout.PopDialogue()
 
-class Renderer:        
+class Renderer:  
+    '''渲染器'''      
     def RenderStatus(self, inWindow, inText):
-        (cursY, cursX) = curses.getsyx() # Store cursor position
+        (cursY, cursX) = curses.getsyx() # 设置光标位置
         inWindow.Win().erase()
         inWindow.AddText(inText, 0, 0)
         inWindow.Refresh()
         if cursX != -1 and cursY != -1:
-            curses.setsyx(cursY, cursX) # Restore cursor position
+            curses.setsyx(cursY, cursX) # 还原光标位置
         

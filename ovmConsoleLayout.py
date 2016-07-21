@@ -1,8 +1,9 @@
 #!/usr/bin/env python
-#-*-conding:utf-8-*-
+#-*-coding:utf-8-*-
 
 from ovmConsoleBases import *
 from ovmConsoleCurses import *
+from ovmConsoleHotData import *
 
 class Layout:
     WIN_MAIN = 0
@@ -39,6 +40,7 @@ class Layout:
         return cls.instance
         
     def ParentSet(self, inParent):
+        '''给父窗口复制'''
         self.parent = inParent
 
     def Parent(self):
@@ -79,9 +81,9 @@ class Layout:
         self.TopDialogue().Destroy()
         self.dialogues.pop()
         if len(self.dialogues) == 1:
-            # When the display returns to the root screen, it's possible that data has changed, so
-            # delete the HotData cache to force a refetch
-            #HotData.Inst().DeleteCache()
+            #When the display returns to the root screen, it's possible that data has changed, so
+            #delete the HotData cache to force a refetch
+            HotData.Inst().DeleteCache()
         self.TopDialogue().UpdateFields()
         self.Refresh()
     
@@ -107,17 +109,19 @@ class Layout:
     def WriteParentOffset(self, inParent):
         self.AssertScreenSize()
  
-        # Centralise subsequent windows
+        # 集中后续窗口
         inParent.OffsetSet(
             (inParent.XSize() - self.APP_XSIZE) / 2,
             (inParent.YSize() - self.APP_YSIZE) / 2)
             
     def Create(self):
-        self.windows.append(CursesWindow(0,1,self.APP_XSIZE, self.APP_YSIZE-1, self.parent)) # MainWindow
-        self.windows.append(CursesWindow(0,0,self.APP_XSIZE,1, self.parent)) # Top line window
+        '''设置窗口参数'''
+        self.windows.append(CursesWindow(0,1,self.APP_XSIZE, self.APP_YSIZE-1, self.parent)) # 主要main窗口
+        self.windows.append(CursesWindow(0,0,self.APP_XSIZE,1, self.parent)) # 顶部线型窗口
+        #设置窗口颜色
         self.windows[self.WIN_MAIN].DefaultColourSet('MAIN_BASE')
         self.windows[self.WIN_TOPLINE].DefaultColourSet('TOPLINE_BASE')
-            
+        #win_main.hasBox = True
         self.Window(self.WIN_MAIN).AddBox()
         self.Window(self.WIN_MAIN).TitleSet("Configuration")
     
