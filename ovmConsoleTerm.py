@@ -4,6 +4,7 @@
 import sys, os, time, string
 import curses
 
+from ovmConsoleAuth import *
 from ovmConsoleCurses import *
 from ovmConsoleLayout import *
 from ovmConsoleImporter import *
@@ -12,13 +13,11 @@ from ovmConsoleLog import *
 from ovmConsoleLang import *
 from ovmConsoleData import *
 from ovmConsoleHotData import *
-
-
-
+from ovmConsoleMenus import *
 
 class App:
     __instance = None
-    
+
     @classmethod
     def Inst(cls):
         if cls.__instance is None:
@@ -41,6 +40,7 @@ class App:
 
     def Enter(self):
         startTime = time.time()
+        #初始化数据
         Data.Inst().Update()
         elapsedTime = time.time() - startTime
         ovmLog('Loaded initial xapi and system data in %.3f seconds' % elapsedTime)
@@ -63,7 +63,7 @@ class App:
         
         RemoteTest.Inst().SetApp(self)
         
-        Reinstate keymap
+        #Reinstate keymap
         if State.Inst().Keymap() is not None:
             Data.Inst().KeymapSet(State.Inst().Keymap())
         
@@ -93,6 +93,7 @@ class App:
                     self.layout.Create()
                     #在父窗口上创建一个主窗口
                     self.layout.ParentSet(self.layout.Window(self.layout.WIN_MAIN))
+                    # 在主窗口上加载东西/创建root对话
                     self.layout.CreateRootDialogue(RootDialogue(self.layout, self.layout.Window(self.layout.WIN_MAIN)))
                     self.layout.TransientBannerHandlerSet(App.TransientBannerHandler)
                     
@@ -131,6 +132,7 @@ class App:
                     
                 finally:
                     if self.cursesScreen is not None:
+                        #清除curses数据
                         self.cursesScreen.Exit()
             
                 if self.layout.ExitCommand() is None:
@@ -175,6 +177,7 @@ class App:
         handled = True
         Auth.Inst().KeepAlive()
         self.lastWakeSeconds = time.time()
+        #分发按钮类型，匹配事件
         if self.layout.TopDialogue().HandleKey(inKeypress):
             State.Inst().SaveIfRequired()
             self.needsRefresh = True
@@ -218,13 +221,14 @@ class App:
                     Layout.Inst().PushDialogue(BannerDialogue(Lang("Press any key to access this console")))
                     Layout.Inst().Refresh()
                     Layout.Inst().DoUpdate()
-                    ovmLog('Entering sleep due to inactivity - xsconsole is now blocked waiting for a keypress')
+                    ovmLog('Entering sleep due to inactivity - ovmconsole is now blocked waiting for a keypress')
                     self.layout.Window(Layout.WIN_MAIN).GetKeyBlocking()
                     ovmLog('Exiting sleep')
                     self.lastWakeSeconds = time.time()
                     self.needsRefresh = True
                     Layout.Inst().PopDialogue()
                 else:
+                    #通过调用win.getkey()方法循环等待用户输入
                     gotKey = self.layout.Window(Layout.WIN_MAIN).GetKey()
                     
             except Exception, e:
@@ -268,6 +272,7 @@ class App:
                 
             if gotKey is not None:
                 try:
+                    #按键处理事件
                     self.HandleKeypress(gotKey)
                         
                 except Exception, e:
@@ -287,6 +292,7 @@ class App:
 #	     version = data.host.software_version.product_version_text_short(data.host.software_version.platform_version(''))
 	    brand = Language.Inst().Branding("Esage UniServer")
 	    version = "4.1.0"
+
             
 
             bannerStr = brand + ' ' + version

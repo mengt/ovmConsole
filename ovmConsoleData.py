@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #-*-coding:utf-8-*-
 
-#import XenAPI
+import XenAPI
 
 import commands, re, shutil, sys, tempfile, socket
 from pprint import pprint
@@ -64,7 +64,7 @@ class Data:
     
     # Attribute access can be used in two ways
     #   self.host.software_version.oem_model()
-    # returns the value of self.data['host']['software_version']['oem_model'], or the string '<Unknown>'
+    # returns the value of self.data['hos']['software_version']['oem_model'], or the string '<Unknown>'
     # if the element doesn't exist.
     #   self.host.software_version.oem_model('Default')
     # is similar but returns the parameter ('Default' in this case) if the element doesn't exist
@@ -80,7 +80,7 @@ class Data:
         return self.session
     
     def Create(self):
-        # Create fills in data that never changes.  Update fills volatile data
+        '''创建静态数据，更新动态数据'''
         self.data = {}
         
         self.ReadTimezones()
@@ -146,6 +146,7 @@ class Data:
             self.session = Auth.Inst().CloseSession(self.session)
     
     def Update(self):
+        '''更新动态数据'''
         self.data['host'] = {}
 
         self.RequireSession()
@@ -154,7 +155,7 @@ class Data:
                 try:
                     thisHost = self.session.xenapi.session.get_this_host(self.session._session)
                 except XenAPI.Failure, e:
-                    ovmLog('Data update connection failed - retrying.  Exception was:', e)
+                    XSLog('Data update connection failed - retrying.  Exception was:', e)
                     self.session = Auth.Inst().CloseSession(self.session)
                     self.RequireSession()
                     if self.session is None:
@@ -185,17 +186,17 @@ class Data:
                 
                 def convertPIF(inPIF):
                     retVal = self.session.xenapi.PIF.get_record(inPIF)
-                    # try:
-                    #     retVal['metrics'] = self.session.xenapi.PIF_metrics.get_record(retVal['metrics'])
-                    # except XenAPI.Failure:
-                    #     retVal['metrics' ] = self.FakeMetrics(inPIF)
+                    try:
+                        retVal['metrics'] = self.session.xenapi.PIF_metrics.get_record(retVal['metrics'])
+                    except XenAPI.Failure:
+                        retVal['metrics' ] = self.FakeMetrics(inPIF)
                     
-                    # try:
-                    #     retVal['network'] = self.session.xenapi.network.get_record(retVal['network'])
-                    # except XenAPI.Failure, e:
-                    #     ovmLogError('Missing network record: ', e)
+                    try:
+                        retVal['network'] = self.session.xenapi.network.get_record(retVal['network'])
+                    except XenAPI.Failure, e:
+                        XSLogError('Missing network record: ', e)
                         
-                    # retVal['opaqueref'] = inPIF
+                    retVal['opaqueref'] = inPIF
                     return retVal
     
                 self.data['host']['PIFs'] = map(convertPIF, self.data['host']['PIFs'])
@@ -289,7 +290,7 @@ class Data:
             except socket.timeout:
                 self.session = None
             except Exception, e:
-                ovmLogError('Data update failed: ', e)
+                XSLogError('Data update failed: ', e)
 
             try:
                 self.data['sr'] = []
@@ -309,7 +310,7 @@ class Data:
                     self.data['sr'].append(values)
                     
             except Exception, e:
-                ovmLogError('SR data update failed: ', e)
+                XSLogError('SR data update failed: ', e)
 
         self.UpdateFromResolveConf()
         self.UpdateFromSysconfig()
@@ -745,7 +746,7 @@ class Data:
         self.data['keyboard']['namestomaps'] = Keymaps.NamesToMaps()
         for value in self.data['keyboard']['namestomaps'].values():
             if not value in self.data['keyboard']['keymaps']:
-                ovmLogError("Warning: Missing keymap " + value)
+                XSLogError("Warning: Missing keymap " + value)
     
     def KeymapSet(self, inKeymap):
         # mapFile = self.keyboard.keymaps().get(inKeymap, None)
@@ -753,12 +754,12 @@ class Data:
         #     raise Exception(Lang("Unknown keymap '")+str(inKeymap)+"'")
         
         keymapParam = ShellUtils.MakeSafeParam(inKeymap)
-        # 加载现在的keymap
+        # Load the keymap now
         status, output = commands.getstatusoutput('/bin/loadkeys "'+keymapParam+'"')
         if status != 0:
             raise Exception(output)
         
-        #使用state-based的方法确认keymap在项目第一次运行的时候被设置
+        # Use state-based method to ensure that keymap is set on first run
         State.Inst().KeymapSet(keymapParam)
 
         # Store the keymap for next boot
@@ -1035,7 +1036,7 @@ class Data:
                     self.UnplugVBD(vbd)
                 self.DestroyVBD(vbd)
             except Exception, e:
-                ovmLogError('VBD purge failed', e)
+                XSLogError('VBD purge failed', e)
     
     def IsXAPIRunning(self):
         try:

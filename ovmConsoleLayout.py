@@ -155,5 +155,6 @@ class Layout:
         self.Refresh()
     
     def DoUpdate(self):
+        '''刷新当前或指定的窗口'''
         curses.doupdate()
     
