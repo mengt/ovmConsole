@@ -14,6 +14,8 @@ from ovmConsoleLang import *
 from ovmConsoleData import *
 from ovmConsoleHotData import *
 from ovmConsoleMenus import *
+from ovmConsoleRootDialogue import *
+from ovmConsoleState import *
 
 class App:
     __instance = None
@@ -46,22 +48,6 @@ class App:
         ovmLog('Loaded initial xapi and system data in %.3f seconds' % elapsedTime)
         
         doQuit = False
-        
-        if '--dump' in sys.argv:
-            # Testing - dump data and exit
-            Data.Inst().Dump()
-            Importer.Dump()
-            for key, value in HotData.Inst().guest_vm().iteritems():
-                localhost = HotAccessor().local_host()
-                vm = HotData.Inst().vm[key]
-                vm.metrics()
-                try: vm.guest_metrics()
-                except: pass # Not all VMs  have guest metrics
-                HotAccessor().pool()
-            HotData.Inst().Dump()
-            doQuit = True
-        
-        RemoteTest.Inst().SetApp(self)
         
         #Reinstate keymap
         if State.Inst().Keymap() is not None:
@@ -97,23 +83,6 @@ class App:
                     self.layout.CreateRootDialogue(RootDialogue(self.layout, self.layout.Window(self.layout.WIN_MAIN)))
                     self.layout.TransientBannerHandlerSet(App.TransientBannerHandler)
                     
-                    # if State.Inst().WeStoppedXAPI():
-                    #     # Restart XAPI if we crashed after stopping it
-                    #     Data.Inst().StartXAPI()
-                    #     Data.Inst().Update()
-                        
-                    # if not Data.Inst().IsXAPIRunning() and State.Inst().RebootMessage() is None:
-                    #     ovmLog("Displaying 'xapi is not running' dialogue")
-                    #     self.layout.PushDialogue(QuestionDialogue(
-                    #         Lang("The underlying Xen API xapi is not running.  This console will have reduced functionality.  "
-                    #              "Would you like to attempt to restart xapi?"), lambda x: self.HandleRestartChoice(x)))
-
-                    # if Auth.Inst().IsXenAPIConnectionBroken():
-                    #     ovmLog("Displaying 'XenAPI connection timeout' dialogue")
-                    #     self.layout.PushDialogue(InfoDialogue(
-                    #         Lang("The XenAPI connection has timed out.  This console will have reduced functionality.  "
-                    #             "If this host is a pool slave, the master might be unreachable.")))
-
                     if not Auth.Inst().IsPasswordSet() :
                         # Request password change on first boot, or if it isn't set
                         ovmLog("Displaying 'Please specify a password' dialogue and EULAs")
@@ -127,8 +96,7 @@ class App:
                         State.Inst().RebootMessageSet(None)
             
                     self.layout.Clear()
-                    if not '--dryrun' in sys.argv:
-                        self.MainLoop()
+                    self.MainLoop()
                     
                 finally:
                     if self.cursesScreen is not None:
@@ -211,12 +179,9 @@ class App:
         self.layout.DoUpdate()
         while not doQuit:
             self.needsRefresh = False
-            gotTestCommand = RemoteTest.Inst().Poll()
             secondsNow = time.time()
             try:
-                if gotTestCommand:
-                    gotKey = None # Prevent delay whilst waiting for a keypress
-                elif secondsNow - self.lastWakeSeconds > State.Inst().SleepSeconds():
+                if secondsNow - self.lastWakeSeconds > State.Inst().SleepSeconds():
                     gotKey = None
                     Layout.Inst().PushDialogue(BannerDialogue(Lang("Press any key to access this console")))
                     Layout.Inst().Refresh()
@@ -230,10 +195,8 @@ class App:
                 else:
                     #通过调用win.getkey()方法循环等待用户输入
                     gotKey = self.layout.Window(Layout.WIN_MAIN).GetKey()
-                    
             except Exception, e:
                 gotKey = None # Catch timeout
-
             if gotKey == "\011": gotKey = "KEY_TAB"
             if gotKey == "\012": gotKey = "KEY_ENTER"
             if gotKey == "\033": gotKey = "KEY_ESCAPE"
@@ -247,7 +210,7 @@ class App:
             elif resized and gotKey is not None:
                 if os.path.isfile("/bin/setfont"): os.system("/bin/setfont") # Restore the default font
                 resized = False
-            
+
             # Screen out non-ASCII and unusual characters
             for char in FirstValue(gotKey, ''):
                 if char >="\177": # Characters 128 and greater
@@ -264,12 +227,11 @@ class App:
                     data.Update()
                     self.layout.UpdateRootFields()
                     self.needsRefresh = True
-    
             if secondsNow - lastScreenUpdateSeconds >= 4:
                 lastScreenUpdateSeconds = secondsNow
                 self.layout.UpdateRootFields()
-                self.needsRefresh = True
-                
+                self.needsRefresh = True  
+
             if gotKey is not None:
                 try:
                     #按键处理事件
@@ -290,8 +252,8 @@ class App:
             
 #            brand = Language.Inst().Branding(data.host.software_version.product_brand(data.host.software_version.platform_name('')))
 #	     version = data.host.software_version.product_version_text_short(data.host.software_version.platform_version(''))
-	    brand = Language.Inst().Branding("Esage UniServer")
-	    version = "4.1.0"
+	    brand = Language.Inst().Branding("OVM OpenGear")
+	    version = "16.8.0"
 
             
 
@@ -301,15 +263,15 @@ class App:
                 hostStr = Auth.Inst().LoggedInUsername()+'@'+data.host.hostname('')
             else:
                 hostStr = data.host.hostname('')
-                
+
             # Testing
-            # if gotKey is not None:
-            #     bannerStr = gotKey
-            
+            if gotKey is not None:
+                bannerStr = gotKey
+            ovmLog('this is time')
             timeStr = time.strftime(" %H:%M:%S ", time.localtime())
             statusLine = ("%-35s%10.10s%35.35s" % (bannerStr[:35], timeStr[:10], hostStr[:35]))
             self.renderer.RenderStatus(self.layout.Window(Layout.WIN_TOPLINE), statusLine)
-
+            ovmLog('this is timeout')
             if self.needsRefresh:
                 self.layout.Refresh()
             elif self.layout.LiveUpdateFields():

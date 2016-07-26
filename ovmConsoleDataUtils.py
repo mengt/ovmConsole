@@ -20,6 +20,7 @@ class USBNotMountable(Exception):
     pass
 
 class FileUtils:
+    '''数据处理公共方法集合'''
     @classmethod
     def DeviceList(cls, inWritableOnly):
         retVal = []

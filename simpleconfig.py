@@ -1,0 +1,122 @@
+#!/usr/bin/env python
+#-*-coding:utf-8-*-
+
+import string
+import os
+import shutil
+
+# use our own ASCII only uppercase function to avoid locale issues
+# not going to be fast but not important
+def uppercase_ASCII_string(str):
+    newstr = ""
+    for i in range(0,len(str)):
+	if str[i] in string.lowercase:
+	    newstr += chr(ord(str[i])-32)
+	else:
+	    newstr += str[i]
+
+    return newstr
+
+class SimpleConfigFile:
+    def __str__ (self):
+        s = ""
+        keys = self.info.keys ()
+        keys.sort ()
+        for key in keys:
+            # FIXME - use proper escaping
+            if type (self.info[key]) == type(""):
+                s = s + key + "=\"" + self.info[key] + "\"\n"
+        return s
+
+    def __init__ (self):
+        self.info = {}
+
+    def write(self, file):
+        f = open(file, "w")
+        f.write(self.__str__())
+        f.close()
+
+    def read(self, file):
+        if not os.access(file, os.R_OK):
+            return
+
+        f = open(file, "r")
+        lines = f.readlines()
+        f.close()
+
+        for line in lines:
+            fields = line[:-1].split('=', 2)
+            if len(fields) < 2:
+                # how am I supposed to know what to do here?
+                continue
+            key = uppercase_ASCII_string(fields[0])
+            value = fields[1]
+            # XXX hack
+            value = value.replace('"', '')
+            value = value.replace("'", '')
+            self.info[key] = value
+
+    def set (self, *args):
+        for (key, data) in args:
+            self.info[uppercase_ASCII_string(key)] = data
+
+    def unset (self, *keys):
+        for key in keys:
+            key = uppercase_ASCII_string(key)
+            if self.info.has_key (key):
+               del self.info[key]
+
+    def get (self, key):
+        key = uppercase_ASCII_string(key)
+        return self.info.get(key, "")
+
+
+class IfcfgFile(SimpleConfigFile):
+
+    def __init__(self, dir, iface):
+        SimpleConfigFile.__init__(self)
+        self.iface = iface
+        self.dir = dir
+
+    @property
+    def path(self):
+        return os.path.join(self.dir, "ifcfg-%s" % self.iface)
+
+    def clear(self):
+        self.info = {}
+
+    def read(self):
+        """Reads values from ifcfg file.
+
+        returns: number of values read
+        """
+        f = open(self.path, "r")
+        lines = f.readlines()
+        f.close()
+
+        for line in lines:
+            line = line.strip()
+            if line.startswith("#") or line == '':
+                continue
+            fields = line.split('=', 1)
+            key = uppercase_ASCII_string(fields[0])
+            value = fields[1]
+            # XXX hack
+            value = value.replace('"', '')
+            value = value.replace("'", '')
+            self.info[key] = value
+
+        return len(self.info)
+
+    # ifcfg-rh is using inotify IN_CLOSE_WRITE event
+    # so we don't use temporary file for new configuration.
+    def write(self, dir=None):
+        """Writes values into ifcfg file."""
+
+        if not dir:
+            path = self.path
+        else:
+            path = os.path.join(dir, os.path.basename(self.path))
+
+        SimpleConfigFile.write(self, path)
+

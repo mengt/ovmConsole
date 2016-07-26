@@ -15,10 +15,11 @@ def main():
     try:
         app.Enter()
     except Exception, e:
+        raise 
         # it may be that the screen size has changed
         app.AssertScreenSize()
         # if we get here then it was some other problem
-        raise e
+        #raise 
 
 if __name__ == "__main__":
     try:

@@ -26,8 +26,9 @@ class ovmLogger:
         message = Lang(Exception(logString))
 
     def ErrorLoggingHook(self, *inParams):
-        logString = "\n".join([str[param] for param in inParams])
-        self.Log(syslog.LOG_ERR,'Exception:'+logString)
+        # This hook is called by Lang(Exception), so mustn't call Lang(Exception) itself
+        logString = "\n".join( [ str(param) for param in inParams ] )
+        self.Log(syslog.LOG_ERR, 'Exception: '+logString)
 
 def ovmLog(*inParams):
     ovmLogger.Inst().Log(syslog.LOG_INFO, *inParams)

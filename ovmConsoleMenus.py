@@ -4,11 +4,11 @@ import sys
 
 from pprint import pprint
 
-from XSConsoleBases import *
-from XSConsoleConfig import *
-from XSConsoleData import *
-from XSConsoleImporter import *
-from XSConsoleLang import *
+from ovmConsoleBases import *
+from ovmConsoleConfig import *
+from ovmConsoleData import *
+from ovmConsoleImporter import *
+from ovmConsoleLang import *
 
 class ChoiceDef:
     def __init__(self, name, onAction = None, onEnter = None, priority = None, statusUpdateHandler = None, handle = None):

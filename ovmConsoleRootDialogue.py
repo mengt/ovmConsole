@@ -25,11 +25,13 @@ class RootDialogue(Dialogue):
         statusPane = self.NewPane(DialoguePane(self.parent, PaneSizerFixed(40, 2, 39, 21)), 'status')
         statusPane.ColoursSet('HELP_BASE', 'HELP_BRIGHT', None, None, None, 'HELP_FLASH')
         #初始化选项
+        #选择通过每个文件被引入时的class.Register()方法进行加载
         self.menu = Importer.BuildRootMenu(self)
         self.menuName = 'MENU_ROOT'
         self.UpdateFields()
 
     def UpdateFields(self):
+        #获取主选项
         self.menu.SetMenu(self.menuName, Importer.RegenerateMenu(self.menuName, self.menu.GetMenu(self.menuName)))
         currentMenu = self.menu.CurrentMenu()
         currentChoiceDef = currentMenu.CurrentChoiceDef()

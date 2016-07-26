@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #-*-coding:utf-8-*-
-#import XenAPI
+import XenAPI
 
 import commands, re, shutil, sys, socket
 from pprint import pprint

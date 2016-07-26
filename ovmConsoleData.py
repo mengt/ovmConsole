@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 #-*-coding:utf-8-*-
 
-import XenAPI
-
 import commands, re, shutil, sys, tempfile, socket
 from pprint import pprint
 from simpleconfig import SimpleConfigFile
@@ -194,7 +192,7 @@ class Data:
                     try:
                         retVal['network'] = self.session.xenapi.network.get_record(retVal['network'])
                     except XenAPI.Failure, e:
-                        XSLogError('Missing network record: ', e)
+                        ovmLogError('Missing network record: ', e)
                         
                     retVal['opaqueref'] = inPIF
                     return retVal
@@ -290,7 +288,7 @@ class Data:
             except socket.timeout:
                 self.session = None
             except Exception, e:
-                XSLogError('Data update failed: ', e)
+                ovmLogError('Data update failed: ', e)
 
             try:
                 self.data['sr'] = []
@@ -310,7 +308,7 @@ class Data:
                     self.data['sr'].append(values)
                     
             except Exception, e:
-                XSLogError('SR data update failed: ', e)
+                ovmLogError('SR data update failed: ', e)
 
         self.UpdateFromResolveConf()
         self.UpdateFromSysconfig()
@@ -746,7 +744,7 @@ class Data:
         self.data['keyboard']['namestomaps'] = Keymaps.NamesToMaps()
         for value in self.data['keyboard']['namestomaps'].values():
             if not value in self.data['keyboard']['keymaps']:
-                XSLogError("Warning: Missing keymap " + value)
+                ovmLogError("Warning: Missing keymap " + value)
     
     def KeymapSet(self, inKeymap):
         # mapFile = self.keyboard.keymaps().get(inKeymap, None)
@@ -1036,7 +1034,7 @@ class Data:
                     self.UnplugVBD(vbd)
                 self.DestroyVBD(vbd)
             except Exception, e:
-                XSLogError('VBD purge failed', e)
+                ovmLogError('VBD purge failed', e)
     
     def IsXAPIRunning(self):
         try:

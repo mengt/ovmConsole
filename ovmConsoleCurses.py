@@ -251,6 +251,7 @@ class CursesPane:
         return self.win.getch()
     
     def GetKey(self):
+        '''设置超时时间，并返回从界面获取的值'''
         self.win.timeout(1000) # Return from getkey after x milliseconds if no key pressed
         return self.win.getkey()
         

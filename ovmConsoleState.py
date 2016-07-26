@@ -33,7 +33,7 @@ class State:
         
     @classmethod
     def Inst(cls):
-        # Load the saved state if we can, otherwise create a default object
+        # 如果可以加载保存的状态，则创建一个默认对象
         if cls.instance is None:
             isFirstBoot = True
             try:

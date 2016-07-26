@@ -4,7 +4,6 @@
 from ovmConsoleConfig import *
 from ovmConsoleLangErrors import *
 
-#import XenAPI # For XenAPI.Failure
 
 
 # Global function

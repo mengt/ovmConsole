@@ -10,8 +10,6 @@ from ovmConsoleLog import *
 from ovmConsoleState import *
 from ovmConsoleUtils import *
 
-import XenAPI
-
 class Auth:
     instance = None
     
@@ -77,20 +75,8 @@ class Auth:
         return self.defaultPassword
 
     def TCPAuthenticate(self, inUsername, inPassword):
-
-        if not self.masterConnectionBroken:
-            session = XenAPI.Session("https://"+self.testingHost)
-            
-            try:
-                try:
-                    session.login_with_password(inUsername, inPassword)
-                    session.logout()
-                except socket.timeout:
-                    session = None
-                    self.masterConnectionBroken = True
-                    self.error = 'The master connection has timed out.'
-            finally:
-                session.close()    
+        '''用户登录'''
+        pass
         
     def PAMAuthenticate(self, inUsername, inPassword):
         
@@ -158,39 +144,8 @@ class Auth:
         self.loggedInUsername = None
 
     def OpenSession(self):
-        session = None
-
-        if not self.masterConnectionBroken:
-            try:
-                # Try the local Unix domain socket first
-                session = XenAPI.xapi_local()
-                session.login_with_password('root','')
-            except socket.timeout:
-                session = None
-                self.masterConnectionBroken = True
-                self.error = 'The master connection has timed out.'
-            except Exception,  e:
-                session = None
-                self.error = e
-                
-            if session is None and self.testingHost is not None:
-                # Local session couldn't connect, so try remote.
-                session = XenAPI.Session("https://"+self.testingHost)
-                try:
-                    session.login_with_password('root', self.defaultPassword)
-                    
-                except XenAPI.Failure, e:
-                    if e.details[0] != 'HOST_IS_SLAVE': # Ignore slave errors when testing
-                        session = None
-                        self.error = e
-                except socket.timeout:
-                    session = None
-                    self.masterConnectionBroken = True
-                    self.error = 'The master connection has timed out.'
-                except Exception, e:
-                    session = None
-                    self.error = e
-        return session
+        '''打开并返回auth session '''
+        return None
     
     def NewSession(self):
         return self.OpenSession()
@@ -210,34 +165,22 @@ class Auth:
         return retVal
     
     def ChangePassword(self, inOldPassword, inNewPassword):
-        
-        if inNewPassword == '':
-            raise Exception(Lang('An empty password is not allowed'))
-            
-        if self.IsPasswordSet():
-            try:
-                self.PAMAuthenticate('root', inOldPassword)
-            except Exception, e:
-                raise Exception(Lang('Old password not accepted.  Please check your access credentials and try again.'))
-            self.AssertAuthenticated()
-            
-        try:
-            # Use xapi if possible, to take care of password changes for pools
-            session = self.OpenSession()
-            try:
-                session.xenapi.session.change_password(inOldPassword, inNewPassword)
-            finally:
-                self.CloseSession(session)
-        except Exception, e:
-            ShellPipe("/usr/bin/passwd", "--stdin", "root").Call(inNewPassword)
-            raise Exception(Lang("The underlying Xen API xapi could not be used.  Password changed successfully on this host only."))
-            
-        # Caller handles exceptions
+        '''修改密码'''
+        pass
+        # if inNewPassword == '':
+        #     raise Exception(Lang('An empty password is not allowed'))
+        # if self.IsPasswordSet():
+        #     try:
+        #         self.PAMAuthenticate('root', inOldPassword)
+        #     except Exception, e:
+        #         raise Exception(Lang('Old password not accepted.  Please check your access credentials and try again.'))
+        #     self.AssertAuthenticated()
+        #     session = self.OpenSession()
+        #     self.CloseSession(session)
+
+        #ShellPipe("/usr/bin/passwd", "--stdin", "root").Call(inNewPassword)
+
         
     def TimeoutSecondsSet(self, inSeconds):
         Auth.Inst().AssertAuthenticated()
         State.Inst().AuthTimeoutSecondsSet(inSeconds)
-
-    def IsXenAPIConnectionBroken(self):
-       return self.masterConnectionBroken
-
