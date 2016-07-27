@@ -15,6 +15,7 @@ from ovmConsoleData import *
 from ovmConsoleHotData import *
 from ovmConsoleMenus import *
 from ovmConsoleRootDialogue import *
+from ovmConsoleDialogueBases import *
 from ovmConsoleState import *
 
 class App:
@@ -45,7 +46,7 @@ class App:
         #初始化数据
         Data.Inst().Update()
         elapsedTime = time.time() - startTime
-        ovmLog('Loaded initial xapi and system data in %.3f seconds' % elapsedTime)
+        ovmLog('Loaded initial ovm and system data in %.3f seconds' % elapsedTime)
         
         doQuit = False
         
@@ -60,7 +61,7 @@ class App:
                     if os.path.isfile("/bin/setfont"):
                         os.system("/bin/setfont") # Restore the default font
                     if '-f' in sys.argv:
-                        # -f means that this is the automatically started xsonsole on tty1, so set it up to suit xsconsole
+                        # -f means that this is the automatically started xsonsole on tty1, so set it up to suit ovmconsole
                         os.system('/bin/stty quit ^-') # Disable Print Screen key as quit
                         os.system('/bin/stty stop ^-') # Disable Ctrl-S as suspend
 
@@ -82,19 +83,9 @@ class App:
                     # 在主窗口上加载东西/创建root对话
                     self.layout.CreateRootDialogue(RootDialogue(self.layout, self.layout.Window(self.layout.WIN_MAIN)))
                     self.layout.TransientBannerHandlerSet(App.TransientBannerHandler)
-                    
-                    if not Auth.Inst().IsPasswordSet() :
-                        # Request password change on first boot, or if it isn't set
-                        ovmLog("Displaying 'Please specify a password' dialogue and EULAs")
-                        Importer.ActivateNamedPlugIn('CHANGE_PASSWORD', Lang("Please specify a password for user 'root' before continuing"))
-                        # Create a stack of EULA dialogues that must be accepted before the password dialogue is revealed
-                        Importer.ActivateNamedPlugIn('EULA')
-                    elif State.Inst().PasswordChangeRequired():
-                        Importer.ActivateNamedPlugIn('CHANGE_PASSWORD', Lang("Please change the password for user 'root' before continuing"))
-                    elif State.Inst().RebootMessage() is not None:
-                        Importer.ActivateNamedPlugIn('REBOOT', State.Inst().RebootMessage())
-                        State.Inst().RebootMessageSet(None)
-            
+                    if not Auth.Inst().IsAuthenticated():
+                        '''检测是否登录，提示登录'''
+                        Layout.Inst().PushDialogue(LoginDialogue(Lang('Please log in to perform this function')))
                     self.layout.Clear()
                     self.MainLoop()
                     
@@ -249,29 +240,19 @@ class App:
 
             if self.layout.ExitCommand() is not None:
                 doQuit = True
-            
-#            brand = Language.Inst().Branding(data.host.software_version.product_brand(data.host.software_version.platform_name('')))
-#	     version = data.host.software_version.product_version_text_short(data.host.software_version.platform_version(''))
-	    brand = Language.Inst().Branding("OVM OpenGear")
-	    version = "16.8.0"
-
-            
-
-            bannerStr = brand + ' ' + version
-            
+            #获得计算节点名称版本等信息
+            bannerStr = data.data['version']
             if Auth.Inst().IsAuthenticated():
-                hostStr = Auth.Inst().LoggedInUsername()+'@'+data.host.hostname('')
+                hostStr = Auth.Inst().LoggedInUsername()+'@'+data.data['hostname']
             else:
-                hostStr = data.host.hostname('')
+                hostStr = data.data['hostname']
 
             # Testing
             if gotKey is not None:
                 bannerStr = gotKey
-            ovmLog('this is time')
             timeStr = time.strftime(" %H:%M:%S ", time.localtime())
             statusLine = ("%-35s%10.10s%35.35s" % (bannerStr[:35], timeStr[:10], hostStr[:35]))
             self.renderer.RenderStatus(self.layout.Window(Layout.WIN_TOPLINE), statusLine)
-            ovmLog('this is timeout')
             if self.needsRefresh:
                 self.layout.Refresh()
             elif self.layout.LiveUpdateFields():

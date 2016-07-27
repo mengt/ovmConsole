@@ -6,7 +6,6 @@ from pprint import pprint
 from simpleconfig import SimpleConfigFile
 
 from ovmConsoleAuth import *
-from ovmConsoleKeymaps import *
 from ovmConsoleLang import *
 from ovmConsoleLog import *
 from ovmConsoleState import *
@@ -82,8 +81,6 @@ class Data:
         self.data = {}
         
         self.ReadTimezones()
-        self.ReadKeymaps()
-        
         (status, output) = commands.getstatusoutput("dmidecode")
         if status != 0:
             # Use test dmidecode file if there's no real output
@@ -116,7 +113,17 @@ class Data:
                 self.data['sslfingerprint'] = fp[1]
             else:
                 self.data['sslfingerprint'] = "<Unknown>"
- 
+        
+        try:
+            #通过hostname文件获得节点名称
+            self.data['hostname'] = ShellPipe('hostname').AllOutput()[0]
+        except:
+            self.data['hostname'] = Lang('<Unknown>')
+        try:
+            #通过/etc/system-release文件获得节点版本
+            self.data['version'] = ShellPipe('/usr/bin/cat','/etc/system-release').AllOutput()[0]
+        except:
+            self.data['version'] = Lang('<Unknown>')
         try:
             self.data['sshfingerprint'] = ShellPipe('/usr/bin/ssh-keygen', '-lf', '/etc/ssh/ssh_host_rsa_key.pub').AllOutput()[0].split(' ')[1]
         except:
@@ -150,48 +157,37 @@ class Data:
         self.RequireSession()
         if self.session is not None:
             try:
-                try:
-                    thisHost = self.session.xenapi.session.get_this_host(self.session._session)
-                except XenAPI.Failure, e:
-                    XSLog('Data update connection failed - retrying.  Exception was:', e)
-                    self.session = Auth.Inst().CloseSession(self.session)
-                    self.RequireSession()
-                    if self.session is None:
-                        raise Exception('Could not connect to local xapi')
-                    thisHost = self.session.xenapi.session.get_this_host(self.session._session)
-                
-                hostRecord = self.session.xenapi.host.get_record(thisHost)
-                self.data['host'] = hostRecord
-                self.data['host']['opaqueref'] = thisHost
+                self.data['host'] = None
+                self.data['host']['opaqueref'] = None
                 
                 # Expand the items we need in the host record
-                self.data['host']['metrics'] = self.session.xenapi.host_metrics.get_record(self.data['host']['metrics'])
+                self.data['host']['metrics'] = None
                 
                 try:
-                    self.data['host']['suspend_image_sr'] = self.session.xenapi.SR.get_record(self.data['host']['suspend_image_sr'])
-                except:
+                    self.data['host']['suspend_image_sr'] = None
                     # NULL or dangling reference
+                except:
                     self.data['host']['suspend_image_sr'] = None
                     
                 try:
-                    self.data['host']['crash_dump_sr'] = self.session.xenapi.SR.get_record(self.data['host']['crash_dump_sr'])
+                    self.data['host']['crash_dump_sr'] = None
                 except:
                     # NULL or dangling reference
                     self.data['host']['crash_dump_sr'] = None
                 
-                convertCPU = lambda cpu: self.session.xenapi.host_cpu.get_record(cpu)
+                convertCPU = lambda cpu: None
                 self.data['host']['host_CPUs'] = map(convertCPU, self.data['host']['host_CPUs'])
                 
                 def convertPIF(inPIF):
-                    retVal = self.session.xenapi.PIF.get_record(inPIF)
+                    retVal = {}
                     try:
-                        retVal['metrics'] = self.session.xenapi.PIF_metrics.get_record(retVal['metrics'])
-                    except XenAPI.Failure:
-                        retVal['metrics' ] = self.FakeMetrics(inPIF)
+                        retVal['metrics'] = None
+                    except e:
+                        retVal['metrics' ] = None
                     
                     try:
-                        retVal['network'] = self.session.xenapi.network.get_record(retVal['network'])
-                    except XenAPI.Failure, e:
+                        retVal['network'] = None
+                    except e:
                         ovmLogError('Missing network record: ', e)
                         
                     retVal['opaqueref'] = inPIF
@@ -212,71 +208,43 @@ class Data:
                 self.data['host']['PIFs'].sort(lambda x, y : cmp(x['device'], y['device']))
 
                 def convertVBD(inVBD):
-                    retVBD = self.session.xenapi.VBD.get_record(inVBD)
-                    retVBD['opaqueref'] = inVBD
-                    return retVBD
+                    return None
                     
                 def convertVDI(inVDI):
-                    retVDI = self.session.xenapi.VDI.get_record(inVDI)
-                    retVDI['VBDs'] = map(convertVBD, retVDI['VBDs'])
-                    retVDI['opaqueref'] = inVDI
-                    return retVDI
+                    return None
                     
                 def convertPBD(inPBD):
-                    retPBD = self.session.xenapi.PBD.get_record(inPBD)
-                    srRef = retPBD['SR']
-                    try:
-                        retPBD['SR'] = self.session.xenapi.SR.get_record(retPBD['SR'])
-                    except:
-                        retPBD['SR'] = None # retPBD['SR'] is OpaqueRef:NULL
-                    
-                    # Get VDIs for udev SRs only - a pool may have thousands of non-udev VDIs
-                    if retPBD['SR'] is not None:
-                        retPBD['SR']['opaqueref'] = srRef
-                        if retPBD['SR'].get('type', '') == 'udev':
-                            retPBD['SR']['VDIs'] = map(convertVDI, retPBD['SR']['VDIs'])
-                            for vdi in retPBD['SR']['VDIs']:
-                                vdi['SR'] = retPBD['SR']
-                    
-                    retPBD['opaqueref'] = inPBD
-                    return retPBD
+                    return None
                     
                 self.data['host']['PBDs'] = map(convertPBD, self.data['host']['PBDs'])
 
                 # Only load the to DOM-0 VM to save time
                 vmList = self.data['host']['resident_VMs']
-                for i in range(len(vmList)):
-                    vm = vmList[i]
-                    domID = self.session.xenapi.VM.get_domid(vm)
-                    if domID == '0':
-                        vmList[i] = self.session.xenapi.VM.get_record(vm)
-                        vmList[i]['allowed_VBD_devices'] = self.session.xenapi.VM.get_allowed_VBD_devices(vm)
-                        vmList[i]['opaqueref'] = vm
                 
-                pools = self.session.xenapi.pool.get_all_records()
+                pools = None
                 
                 def convertPool(inID, inPool):
                     retPool = inPool
                     retPool['opaqueref'] = inID
                     try:
-                        retPool['master_uuid'] = self.session.xenapi.host.get_uuid(inPool['master'])
+                        retPool['master_uuid'] = None
                     except:
                         retPool['master_uuid'] = None
 
                     # SRs in the pool record are often apparently valid but dangling references.
                     # We fetch the uuid to determine whether the SRs are real.
                     try:
-                        retPool['default_SR_uuid'] = self.session.xenapi.SR.get_uuid(inPool['default_SR'])
+                        retPool['default_SR_uuid'] = None
                     except:
                         retPool['default_SR_uuid'] = None
 
                     try:
-                        retPool['suspend_image_SR_uuid'] = self.session.xenapi.SR.get_uuid(inPool['suspend_image_SR'])
+                        retPool['suspend_image_SR_uuid'] = None
                     except:
                         retPool['suspend_image_SR_uuid'] = None
                         
                     try:
-                        retPool['crash_dump_SR_uuid'] = self.session.xenapi.SR.get_uuid(inPool['crash_dump_SR'])
+                        retPool['crash_dump_SR_uuid'] = None
                     except:
                         retPool['crash_dump_SR_uuid'] = None
                     return retPool
@@ -297,15 +265,6 @@ class Data:
                 for pbd in self.data['host'].get('PBDs', []):
                     pbdRefs.append(pbd['opaqueref'])
                     
-                srMap= self.session.xenapi.SR.get_all_records()
-                for opaqueRef, values in srMap.iteritems():
-                    values['opaqueref'] = opaqueRef
-                    values['islocal'] = False
-                    for pbdRef in values.get('PBDs', []):
-                        if pbdRef in pbdRefs:
-                            values['islocal'] = True
-                            
-                    self.data['sr'].append(values)
                     
             except Exception, e:
                 ovmLogError('SR data update failed: ', e)
@@ -314,7 +273,6 @@ class Data:
         self.UpdateFromSysconfig()
         self.UpdateFromNTPConf()
         self.UpdateFromTimezone()
-        self.UpdateFromKeymap()
         
         if os.path.isfile("/sbin/chkconfig"):
             (status, output) = commands.getstatusoutput("/sbin/chkconfig --list sshd && /sbin/chkconfig --list ntpd")
@@ -384,13 +342,8 @@ class Data:
             raise Exception("Invalid hostname '"+inHostname+"'")
         IPUtils.AssertValidNetworkName(inHostname)
         
-        self.RequireSession()
-
-        self.session.xenapi.host.set_hostname_live(self.host.opaqueref(), inHostname)
-
     def NameLabelSet(self, inNameLabel):
-        self.RequireSession()
-        self.session.xenapi.host.set_name_label(self.host.opaqueref(), inNameLabel)
+        pass
 
     def NameserversSet(self, inServers):
         self.data['dns']['nameservers'] = inServers
@@ -398,14 +351,7 @@ class Data:
     def NTPServersSet(self, inServers):
         self.data['ntp']['servers'] = inServers
 
-    def LoggingDestinationSet(self, inDestination):
-        Auth.Inst().AssertAuthenticated()
-        
-        self.RequireSession()
-        
-        self.session.xenapi.host.remove_from_logging(self.host.opaqueref(), 'syslog_destination')
-        self.session.xenapi.host.add_to_logging(self.host.opaqueref(), 'syslog_destination', inDestination)
-        self.session.xenapi.host.syslog_reconfigure(self.host.opaqueref())
+
     
     def UpdateFromResolveConf(self):
         (status, output) = commands.getstatusoutput("/bin/cat /etc/resolv.conf")
@@ -723,75 +669,6 @@ class Data:
     def CurrentTimeString(self):
         return commands.getoutput('/bin/date -R')
 
-    def ReadKeymaps(self):
-        self.data['keyboard'] = {
-            'keymaps' : {} 
-        }
-
-        keymapsPath = '/lib/kbd/keymaps/i386'
-        excludeExp = re.compile(re.escape(keymapsPath)+r'/include')
-        
-        filterExp = re.compile(r'(.*).map.gz$')
-
-        for root, dirs, files in os.walk(keymapsPath):
-            for filename in files:
-                if not excludeExp.match(root):
-                    match = filterExp.match(filename)
-                    if match:
-                        filePath = os.path.join(root, filename)
-                        self.data['keyboard']['keymaps'][match.group(1)] = filePath
-        
-        self.data['keyboard']['namestomaps'] = Keymaps.NamesToMaps()
-        for value in self.data['keyboard']['namestomaps'].values():
-            if not value in self.data['keyboard']['keymaps']:
-                ovmLogError("Warning: Missing keymap " + value)
-    
-    def KeymapSet(self, inKeymap):
-        # mapFile = self.keyboard.keymaps().get(inKeymap, None)
-        # if mapFile is None:
-        #     raise Exception(Lang("Unknown keymap '")+str(inKeymap)+"'")
-        
-        keymapParam = ShellUtils.MakeSafeParam(inKeymap)
-        # Load the keymap now
-        status, output = commands.getstatusoutput('/bin/loadkeys "'+keymapParam+'"')
-        if status != 0:
-            raise Exception(output)
-        
-        # Use state-based method to ensure that keymap is set on first run
-        State.Inst().KeymapSet(keymapParam)
-
-        # Store the keymap for next boot
-        # Currently this has no effect
-        file = open('/etc/sysconfig/keyboard', 'w')
-        file.write('KEYTABLE="'+keymapParam+'"\n')
-        file.close()
-    
-    def KeymapToName(self, inKeymap):
-        # Derive a name to present to the user
-        mapName = FirstValue(inKeymap, Lang('<Default>'))
-        for key, value in self.keyboard.namestomaps({}).iteritems():
-            if value == inKeymap:
-                mapName = key
-        
-        return mapName
-    
-    def UpdateFromKeymap(self):
-        keymap = State.Inst().Keymap()
-        self.data['keyboard']['currentname'] = self.KeymapToName(keymap)
-    
-    def SuspendSRSet(self, inSR):
-        # Double-check authentication
-        Auth.Inst().AssertAuthenticated()
-        self.RequireSession()
-        pool = self.GetPoolForThisHost()
-        self.session.xenapi.pool.set_suspend_image_SR(pool['opaqueref'], inSR['uuid'])
-    
-    def CrashDumpSRSet(self, inSR):
-        # Double-check authentication
-        Auth.Inst().AssertAuthenticated()
-        self.RequireSession()
-        pool = self.GetPoolForThisHost()
-        self.session.xenapi.pool.set_crash_dump_SR(pool['opaqueref'], inSR['opaqueref'])
     
     def RemovePartitionSuffix(self, inDevice):
         regExpList = [
@@ -821,17 +698,8 @@ class Data:
         return retVal
     
     def SetPoolSRIfRequired(self, inOpaqueRef):
-        Auth.Inst().AssertAuthenticated()
-        self.RequireSession()
-        pool = self.GetPoolForThisHost()
-        if pool is not None:
-            if pool['default_SR_uuid'] is None:
-                self.session.xenapi.pool.set_default_SR(pool['opaqueref'], inOpaqueRef)
-            if pool['suspend_image_SR_uuid'] is None:
-                self.session.xenapi.pool.set_suspend_image_SR(pool['opaqueref'], inOpaqueRef)
-            if pool['crash_dump_SR_uuid'] is None:
-                self.session.xenapi.pool.set_crash_dump_SR(pool['opaqueref'], inOpaqueRef)
-    
+        pass
+
     def SetPoolSRsFromDeviceIfNotSet(self, inDevice):
         sr = self.GetSRFromDevice(inDevice)
         if sr is None:
@@ -850,43 +718,17 @@ class Data:
         return retVal
     
     def ReconfigureManagement(self, inPIF, inMode,  inIP,  inNetmask,  inGateway, inDNS = None):
-        # Double-check authentication
-        Auth.Inst().AssertAuthenticated()
-        try:
-            self.RequireSession()
-            self.session.xenapi.PIF.reconfigure_ip(inPIF['opaqueref'],  inMode,  inIP,  inNetmask,  inGateway, FirstValue(inDNS, ''))
-            self.session.xenapi.host.management_reconfigure(inPIF['opaqueref'])
-            status, output = commands.getstatusoutput('/opt/xensource/bin/xe host-signal-networking-change')
-            if status != 0:
-                raise Exception(output)
-        finally:
-            # Network reconfigured so this link is potentially no longer valid
-            self.session = Auth.Inst().CloseSession(self.session)
+        pass
 
     
     def DisableManagement(self):
-        # Double-check authentication
-        Auth.Inst().AssertAuthenticated()
-        try:
-            self.RequireSession()
-            # Disable management interfaces
-            self.session.xenapi.host.management_disable()
-            # Disable the PIF that the management interface was using
-            for pif in self.derived.managementpifs([]):
-                self.session.xenapi.PIF.reconfigure_ip(pif['opaqueref'], 'None','' ,'' ,'' ,'')
-        finally:
-            # Network reconfigured so this link is potentially no longer valid
-            self.session = Auth.Inst().CloseSession(self.session)
+        pass
     
     def LocalHostEnable(self):
-        Auth.Inst().AssertAuthenticatedOrPasswordUnset()
-        self.RequireSession()
-        self.session.xenapi.host.enable(self.host.opaqueref())
+        pass
         
     def LocalHostDisable(self):
-        Auth.Inst().AssertAuthenticatedOrPasswordUnset()
-        self.RequireSession()
-        self.session.xenapi.host.disable(self.host.opaqueref())
+        pass
 
     def ConfigureRemoteShell(self, inEnable):
         if inEnable:
@@ -972,7 +814,7 @@ class Data:
     def VBDGetRecord(self, inVBD):
         self.RequireSession()
 
-        vbdRecord = self.session.xenapi.VBD.get_record(inVBD)
+        vbdRecord = {}
         vbdRecord['opaqueref'] = inVBD
         
         return vbdRecord
@@ -989,18 +831,18 @@ class Data:
             'type' : FirstValue(inType, 'disk'), 
             'unpluggable' : True,
             'empty' : False, 
-            'other_config' : { 'xsconsole_tmp' : 'Created: '+time.asctime(time.gmtime()) }, 
+            'other_config' : { 'ovmconsole_tmp' : 'Created: '+time.asctime(time.gmtime()) }, 
             'qos_algorithm_type' : '', 
             'qos_algorithm_params' : {}
         }
 
-        newVBD = self.session.xenapi.VBD.create(vbd)
+        newVBD = None
 
         return self.VBDGetRecord(newVBD)
     
     def PlugVBD(self, inVBD):
         def TimedOp():
-            self.session.xenapi.VBD.plug(inVBD['opaqueref'])
+            pass
             
         TimeUtils.TimeoutWrapper(TimedOp, self.DISK_TIMEOUT_SECONDS)
         
@@ -1008,14 +850,13 @@ class Data:
         return self.VBDGetRecord(inVBD['opaqueref'])
         
     def UnplugVBD(self, inVBD):
-        self.session.xenapi.VBD.unplug(inVBD['opaqueref'])
-        return self.VBDGetRecord(inVBD['opaqueref'])
+        return None
 
     def DestroyVBD(self, inVBD):
-        self.session.xenapi.VBD.destroy(inVBD['opaqueref'])
+        pass
 
     def PurgeVBDs(self):
-        # Destroy any VBDs that xsconsole created but isn't using
+        # Destroy any VBDs that ovmconsole created but isn't using
         
         vbdRefs = {} # Use a dict to remove duplicates
         
@@ -1024,7 +865,7 @@ class Data:
             sr = pbd.get('SR', {})
             for vdi in sr.get('VDIs', []):
                 for vbd in vdi.get('VBDs', []):
-                    if 'xsconsole_tmp' in vbd.get('other_config', {}):
+                    if 'ovmconsole_tmp' in vbd.get('other_config', {}):
                         vbdRefs[ vbd['opaqueref'] ] = vbd
         
         for vbd in vbdRefs.values():

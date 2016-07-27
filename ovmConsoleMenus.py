@@ -9,6 +9,9 @@ from ovmConsoleConfig import *
 from ovmConsoleData import *
 from ovmConsoleImporter import *
 from ovmConsoleLang import *
+import locale
+
+
 
 class ChoiceDef:
     def __init__(self, name, onAction = None, onEnter = None, priority = None, statusUpdateHandler = None, handle = None):
@@ -145,7 +148,7 @@ class Menu:
         
 class RootMenu:
     def __init__(self, inDialogue):
-        self.menus = {'MENU_ROOT' : Menu(self, None, Lang("Customize System"), [ ]) }
+        self.menus = {'MENU_ROOT' : Menu(self, None, Lang("OVM System Directory"), [ ]) }
         self.currentKey = 'MENU_ROOT'
     
     def GetMenu(self, inMenuName):

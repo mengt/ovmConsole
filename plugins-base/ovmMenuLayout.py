@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #-*-coding:utf-8-*-
 if __name__ == "__main__":
-    raise Exception("This script is a plugin for xsconsole and cannot run independently")
+    raise Exception("This script is a plugin for ovmconsole and cannot run independently")
     
 from ovmConsoleStandard import *
 
@@ -167,25 +167,15 @@ class ovmMenuLayout:
         data = Data.Inst()
         
         rootMenuDefs = [
-            [ 'MENU_NETWORK', Lang("Network and Management Interface"),
-                lambda: self.ActivateHandler('MENU_NETWORK'), self.UpdateFieldsNETWORK ],
             [ 'MENU_AUTH', Lang("Authentication"),
                 lambda: self.ActivateHandler('MENU_AUTH'), self.UpdateFieldsAUTH ],
-            [ 'MENU_VM', Lang("Virtual Machines"),
-                lambda: self.ActivateHandler('MENU_VM'), self.UpdateFieldsVM ],
-            [ 'MENU_DISK', Lang("Disks and Storage Repositories"),
-                lambda: self.ActivateHandler('MENU_DISK'), self.UpdateFieldsDISK ],
-            [ 'MENU_POOL', Lang("Resource Pool Configuration"),
-                lambda: self.ActivateHandler('MENU_POOL'), self.UpdateFieldsPOOL],
+            [ 'MENU_NETWORK', Lang("Network and Management Interface"),
+                lambda: self.ActivateHandler('MENU_NETWORK'), self.UpdateFieldsNETWORK ],
             [ 'MENU_PROPERTIES', Lang("Hardware and BIOS Information"),
                 lambda: self.ActivateHandler('MENU_PROPERTIES'), self.UpdateFieldsPROPERTIES ],
-            [ 'MENU_MANAGEMENT', Lang("Keyboard and Timezone"),
-                lambda: self.ActivateHandler('MENU_MANAGEMENT'), self.UpdateFieldsMANAGEMENT ],
-            [ 'MENU_REMOTE', Lang("Remote Service Configuration"),
-                lambda: self.ActivateHandler('MENU_REMOTE'), self.UpdateFieldsREMOTE ],
-            [ 'MENU_BUR', Lang("Backup, Restore and Update"),
-                lambda: self.ActivateHandler('MENU_BUR'), self.UpdateFieldsBUR ],
-            [ 'MENU_TECHNICAL', Lang("Technical Support"),
+            [ 'MENU_POOL', Lang("Set Node Type"),
+                lambda: self.ActivateHandler('MENU_NODETYPE'), self.UpdateFieldsPOOL],
+            [ 'MENU_TECHNICAL', Lang("Repertory Support"),
                 lambda: self.ActivateHandler('MENU_TECHNICAL'), self.UpdateFieldsTECHNICAL ],
             [ 'MENU_REBOOTSHUTDOWN', Lang("Reboot or Shutdown"),
                 lambda: self.ActivateHandler('MENU_REBOOTSHUTDOWN'), self.UpdateFieldsREBOOTSHUTDOWN ]
@@ -208,4 +198,4 @@ class ovmMenuLayout:
             priority += 100
 
 # Register this plugin when module is imported
-#ovmMenuLayout().Register()
+ovmMenuLayout().Register()

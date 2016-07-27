@@ -9,7 +9,7 @@ from ovmConsoleLog import *
 
 class State:
     instance = None
-    savePath = '/etc/xsconsole'
+    savePath = '/etc/ovmconsole'
     saveLeafname = 'state.txt'
     thisVersion = 9
     

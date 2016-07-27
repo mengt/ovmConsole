@@ -73,6 +73,7 @@ class Layout:
         return self.dialogues[-1]
     
     def PushDialogue(self, inDialogue):
+        '''提交一个准备好的窗口'''
         self.dialogues.append(inDialogue)
         
     def PopDialogue(self):
@@ -123,8 +124,8 @@ class Layout:
         self.windows[self.WIN_TOPLINE].DefaultColourSet('TOPLINE_BASE')
         #win_main.hasBox = True
         self.Window(self.WIN_MAIN).AddBox()
-        self.Window(self.WIN_MAIN).TitleSet("Configuration")
-    
+        self.Window(self.WIN_MAIN).TitleSet("Ovm Configuration")
+
     def CreateRootDialogue(self, inRootDialogue):
         self.dialogues = [ inRootDialogue ]
     

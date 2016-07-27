@@ -14,6 +14,7 @@ from ovmConsoleTask import *
 from ovmConsoleUtils import *
 
 class Dialogue:
+    '''弹出框父模板'''
     def __init__(self, inLayout = None, inParent = None):
         self.layout = FirstValue(inLayout, Layout.Inst())
         self.parent = FirstValue(inParent, self.layout.Parent())
@@ -63,6 +64,7 @@ class Dialogue:
         return retVal
         
 class InfoDialogue(Dialogue):
+    '''详情信息弹出框'''
     def __init__(self, inText,  inInfo = None):
         Dialogue.__init__(self)
         self.text = inText
@@ -104,6 +106,7 @@ class InfoDialogue(Dialogue):
         return handled
 
 class BannerDialogue(Dialogue):
+    '''banner弹出框'''
     def __init__(self, inText):
         Dialogue.__init__(self)
         self.text = inText
@@ -118,6 +121,7 @@ class BannerDialogue(Dialogue):
         pane.AddWrappedCentredBoldTextField(self.text)
 
 class QuestionDialogue(Dialogue):
+    '''确认弹出框'''
     def __init__(self, inText, inHandler):
         Dialogue.__init__(self,)
         self.text = inText
@@ -149,6 +153,7 @@ class QuestionDialogue(Dialogue):
         return handled
 
 class LoginDialogue(Dialogue):
+    '''登录弹出框'''
     def __init__(self, inText = None,  inSuccessFunc = None):
         Dialogue.__init__(self)
         self.text = inText

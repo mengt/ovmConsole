@@ -52,7 +52,7 @@ class Config:
         return 'BMC'
         
     def FirstBootEULAs(self):
-        # Subclasses in XSConsoleConfigOEM can add their EULAs to this array
+        # Subclasses in ovmconsoleConfigOEM can add their EULAs to this array
         return ['/EULA']
         
 # Import a more specific configuration if available

@@ -103,6 +103,7 @@ class Auth:
             raise Exception(Lang("The system could not log you in.  Please check your access credentials and try again."))
 
     def ProcessLogin(self, inUsername, inPassword):
+        '''用户登录过程'''
         self.isAuthenticated = False
         
         if inUsername != 'root':
@@ -120,9 +121,10 @@ class Auth:
             self.loggedInPassword = inPassword
         self.authTimestampSeconds = time.time()
         self.isAuthenticated = True
-        XSLog('User authenticated successfully')
+        ovmLog('User authenticated successfully')
         
     def IsAuthenticated(self):
+        '''检测用户是否登录'''
         if self.isAuthenticated and self.AuthAge() <= State.Inst().AuthTimeoutSeconds():
             retVal = True
         else:

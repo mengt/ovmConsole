@@ -11,7 +11,7 @@ from ovmConsoleTerm import *
 def main():
     ovmLog('Started as ' + ' '.join(sys.argv))
     app = App.Inst()
-    app.Build( ['plugins-base', 'plugins-oem', 'plugins-extras'] )
+    app.Build( ['plugins-base', 'plugins-oem'] )
     try:
         app.Enter()
     except Exception, e:

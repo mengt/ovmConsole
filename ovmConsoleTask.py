@@ -18,24 +18,13 @@ class TaskEntry:
         return self.completed
         
     def HandleCompletion(self, inStatus):
-        if self.completed:
-            raise Exception('TaskEntry.HandleCompletion called more than once')
-        self.completed = True
-        self.completionStatus = inStatus
-        
-        self.creationTime = TimeUtils.DateTimeToSecs(self.session.xenapi.task.get_created(self.hotOpaqueRef.OpaqueRef()))
-        self.finishTime = TimeUtils.DateTimeToSecs(self.session.xenapi.task.get_finished(self.hotOpaqueRef.OpaqueRef()))
-        if inStatus.startswith('failure'):
-            self.errorInfo = self.session.xenapi.task.get_error_info(self.hotOpaqueRef.OpaqueRef())
-
-        Auth.Inst().CloseSession(self.session)
         self.session = None
 
     def Status(self):
         if self.Completed():
             status = self.completionStatus
         else:
-            status = self.session.xenapi.task.get_status(self.hotOpaqueRef.OpaqueRef())
+            status = None
             if not status.startswith('pending'):
                 self.HandleCompletion(status)
         return status
@@ -44,14 +33,14 @@ class TaskEntry:
         if self.Completed():
             result = self.completionStatus
         else:
-            result= self.session.xenapi.task.get_status(self.hotOpaqueRef.OpaqueRef())
+            result= None
         return HotOpaqueRef(result, 'any')
     
     def CanCancel(self):
         if self.Completed():
             retVal = False
         else:
-            allowedOps = self.session.xenapi.task.get_allowed_operations(self.hotOpaqueRef.OpaqueRef())    
+            allowedOps = None   
             retVal = ('cancel' in allowedOps)
             
         return retVal
@@ -88,7 +77,7 @@ class TaskEntry:
         if self.Completed():
             retVal = 1.0
         else:
-            retVal = self.session.xenapi.task.get_progress(self.hotOpaqueRef.OpaqueRef())
+            retVal = None
         return retVal
     
     def DurationSecs(self):
@@ -99,8 +88,7 @@ class TaskEntry:
         return retVal
     
     def Cancel(self):
-        if not self.completed:
-            self.session.xenapi.task.cancel(self.hotOpaqueRef.OpaqueRef())
+        pass
     
 class Task:
     instance = None

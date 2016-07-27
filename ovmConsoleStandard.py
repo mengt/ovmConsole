@@ -15,6 +15,5 @@ from ovmConsoleLangFriendlyNames import *
 from ovmConsoleLayout import *
 from ovmConsoleLog import *
 from ovmConsoleMenus import *
-#from ovmConsoleMetrics import *
 from ovmConsoleTask import *
 from ovmConsoleUtils import *

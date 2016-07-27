@@ -60,9 +60,10 @@ class CursesPalette:
             fgNormal = curses.COLOR_WHITE #白
             fgDark = curses.COLOR_WHITE #白
             bgDark = curses.COLOR_BLACK #黑 Ensure bgDark != bgBright for MODAL_HIGHLIGHT colour
-            
-            bgNormal = curses.COLOR_RED #红
-            bgBright = curses.COLOR_RED #红
+            #bgNormal = curses.COLOR_RED #红色
+            #bgBright = curses.COLOR_RED #红色
+            bgNormal = curses.COLOR_BLUE #蓝色
+            bgBright = curses.COLOR_BLUE #蓝色
 
         if curses.has_colors():
             #查询此终端是不是多种颜色终端
