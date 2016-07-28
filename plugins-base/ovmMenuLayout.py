@@ -32,7 +32,7 @@ class ovmMenuLayout:
 
         inPane.NewLine()
         inPane.AddWrappedTextField(Lang("Only logged in users can reconfigure and control this server.  "
-            "Press <Enter> to change the login password and auto-logout timeout."))
+            "Press <Enter> to change the login password."))
         
         inPane.AddKeyHelpField( { Lang("<F5>") : Lang("Refresh")})
 
@@ -137,7 +137,7 @@ class ovmMenuLayout:
         inPane.AddTitleField(Lang("Reboot or Shutdown"))
     
         inPane.AddWrappedTextField(Lang(
-            "This option can reboot or shutdown this server, and enter or exit Maintenance Mode."))
+            "This option can reboot or shutdown this server."))
         
     def UpdateFieldsTECHNICAL(self, inPane):
         inPane.AddTitleField(Lang("Technical Support"))

@@ -79,7 +79,7 @@ class Auth:
         pass
         
     def PAMAuthenticate(self, inUsername, inPassword):
-        
+        '''使用PAM的方式登录'''
         def PAMConv(inAuth, inQueryList, *theRest):
             # *theRest consumes the userData argument from later versions of PyPAM
             retVal = []
@@ -91,11 +91,15 @@ class Auth:
             
         auth = PAM.pam()
         auth.start('passwd')
+        #设置用户名
         auth.set_item(PAM.PAM_USER, inUsername)
+        #设置密码
         auth.set_item(PAM.PAM_CONV, PAMConv)
         
         try:
+            #用户验证
             auth.authenticate() 
+            #用户超时设置
             auth.acct_mgmt()
             # No exception implies a successful login
         except Exception, e:
