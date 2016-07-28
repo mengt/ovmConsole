@@ -135,8 +135,11 @@ class Importer:
 		for entry in cls.plugIns.values():
 			menuName = entry.get('menuname', None)
 			if menuName is not None:
+				#绑定按钮点击方法和名称
 				choiceDef = ChoiceDef(entry['menutext'], entry.get('activatehandler', None), entry.get('statushandler', None))
+				#绑定内容更换方法
 				choiceDef.StatusUpdateHandlerSet(entry.get('statusupdatehandler', None))
+				#设置菜单优先级
 				retVal.AddChoice(menuName, choiceDef, entry.get('menupriority', None))
 		
 		return retVal
