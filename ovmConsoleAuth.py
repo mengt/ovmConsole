@@ -14,6 +14,7 @@ class Auth:
     instance = None
     
     def __init__(self):
+        self.authsession = None
         self.isAuthenticated = False
         self.loggedInUsername = ''
         self.loggedInPassword = '' # Testing only
@@ -74,10 +75,7 @@ class Auth:
     def DefaultPassword(self):
         return self.defaultPassword
 
-    def TCPAuthenticate(self, inUsername, inPassword):
-        '''用户登录'''
-        pass
-        
+
     def PAMAuthenticate(self, inUsername, inPassword):
         '''使用PAM的方式登录'''
         def PAMConv(inAuth, inQueryList, *theRest):
@@ -88,14 +86,13 @@ class Auth:
                     # Return inPassword from the scope that encloses this function
                     retVal.append((inPassword, 0)) # Append a tuple with two values (so double brackets)
             return retVal
-            
+        ovmLog('ProcessLogin....')    
         auth = PAM.pam()
         auth.start('passwd')
         #设置用户名
         auth.set_item(PAM.PAM_USER, inUsername)
         #设置密码
         auth.set_item(PAM.PAM_CONV, PAMConv)
-        
         try:
             #用户验证
             auth.authenticate() 
@@ -113,10 +110,7 @@ class Auth:
         if inUsername != 'root':
             raise Exception(Lang("Only root can log in here"))
         
-        if self.testingHost is not None:
-            self.TCPAuthenticate(inUsername, inPassword)
-        else:
-            self.PAMAuthenticate(inUsername, inPassword)
+        self.PAMAuthenticate(inUsername, inPassword)
         # No exception implies a successful login
         
         self.loggedInUsername = inUsername
@@ -151,13 +145,16 @@ class Auth:
 
     def OpenSession(self):
         '''打开并返回auth session '''
-        return None
+        if self.authsession != None:
+            return self.authsession
+        else:
+            return self.Inst()
     
     def NewSession(self):
         return self.OpenSession()
         
     def CloseSession(self, inSession):
-        inSession.logout()
+        del inSession
         return None
 
     def IsPasswordSet(self):
@@ -172,19 +169,18 @@ class Auth:
     
     def ChangePassword(self, inOldPassword, inNewPassword):
         '''修改密码'''
-        pass
-        # if inNewPassword == '':
-        #     raise Exception(Lang('An empty password is not allowed'))
-        # if self.IsPasswordSet():
-        #     try:
-        #         self.PAMAuthenticate('root', inOldPassword)
-        #     except Exception, e:
-        #         raise Exception(Lang('Old password not accepted.  Please check your access credentials and try again.'))
-        #     self.AssertAuthenticated()
-        #     session = self.OpenSession()
-        #     self.CloseSession(session)
-
-        #ShellPipe("/usr/bin/passwd", "--stdin", "root").Call(inNewPassword)
+        ovmLog('ChangePassword....')
+        if inNewPassword == '':
+            raise Exception(Lang('An empty password is not allowed'))
+        if self.IsPasswordSet():
+            try:
+                self.PAMAuthenticate('root', inOldPassword)
+            except Exception, e:
+                raise Exception(Lang('Old password not accepted.  Please check your access credentials and try again.'))
+            self.AssertAuthenticated()
+            session = self.OpenSession()
+            self.CloseSession(session)
+        ShellPipe("/usr/bin/passwd", "--stdin", "root").Call(inNewPassword)
 
         
     def TimeoutSecondsSet(self, inSeconds):

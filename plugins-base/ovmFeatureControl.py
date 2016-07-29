@@ -12,9 +12,20 @@ class ovmFeatureReboot:
 		inPane.AddKeyHelpField( {Lang("<Enter>") : Lang("Reboot Server")} )
 
 	@classmethod
-	def ActivateHandler(cls):
-		pass
+	def RebootReplyHandler(cls,  inYesNo):
+		if inYesNo == 'y':
+			try:
+				Layout.Inst().ExitBannerSet(Lang("Rebooting..."))
+				Layout.Inst().ExitCommandSet('/sbin/shutdown -r now')
+				ovmLog('Initiating reboot')
+			except Exception, e:
+				Layout.Inst().PushDialogue(InfoDialogue(Lang("Reboot Failed"), Lang(e)))
 
+	@classmethod
+	def ActivateHandler(cls, inMessage = None):
+		message = FirstValue(inMessage, Lang("Do you want to reboot this server?"))
+		DialogueUtils.AuthenticatedOrPasswordUnsetOnly(lambda: Layout.Inst().PushDialogue(QuestionDialogue(
+				message, lambda x: cls.RebootReplyHandler(x))))
 	def Register(self):
 		Importer.RegisterNamedPlugIn(
 			self,
@@ -38,8 +49,23 @@ class ovmFeatureShutdown:
 		inPane.AddKeyHelpField( {Lang("<Enter>") : Lang("Shutdwon Server")} )
 		
 	@classmethod
+	def ShutdownReplyHandler(cls,  inYesNo):
+		if inYesNo == 'y':
+			try:
+				Layout.Inst().ExitBannerSet(Lang("Shutting Down..."))
+				Layout.Inst().ExitCommandSet('/sbin/shutdown -h now')
+				ovmLog('Initiated shutdown')
+			except Exception, e:
+				Layout.Inst().PushDialogue(InfoDialogue(Lang("Shutdown Failed"), Lang(e)))
+
+	@classmethod
 	def ActivateHandler(cls, *inParams):
-		pass
+		if len(inParams) > 0:
+			banner = inParams[0]
+		else:
+			banner = Lang("Do you want to shutdown this server?")
+		DialogueUtils.AuthenticatedOrPasswordUnsetOnly(lambda: Layout.Inst().PushDialogue(QuestionDialogue(banner, lambda x: cls.ShutdownReplyHandler(x))))
+		
 	def Register(self):
 		Importer.RegisterNamedPlugIn(
 			self,

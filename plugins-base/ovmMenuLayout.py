@@ -38,11 +38,12 @@ class ovmMenuLayout:
 
 
     def UpdateFieldsNETWORK(self, inPane):
+        '''更新网络选项信息'''
         data = Data.Inst()
         
         inPane.AddTitleField(Lang("Network and Management Interface"))
         
-        inPane.AddWrappedTextField(Lang("Press <Enter> to configure the management network connection, hostname, and network time (NTP) settings."))
+        inPane.AddWrappedTextField(Lang("Press <Enter> to configure the management network connection, and network time (NTP) settings."))
         inPane.NewLine()
 
         if len(data.derived.managementpifs([])) == 0:
@@ -167,16 +168,16 @@ class ovmMenuLayout:
         data = Data.Inst()
         
         rootMenuDefs = [
-            [ 'MENU_AUTH', Lang("Authentication"),
-                lambda: self.ActivateHandler('MENU_AUTH'), self.UpdateFieldsAUTH ],
             [ 'MENU_NETWORK', Lang("Network and Management Interface"),
                 lambda: self.ActivateHandler('MENU_NETWORK'), self.UpdateFieldsNETWORK ],
+            [ 'MENU_AUTH', Lang("Authentication"),
+                lambda: self.ActivateHandler('MENU_AUTH'), self.UpdateFieldsAUTH ],
             [ 'MENU_PROPERTIES', Lang("Hardware and BIOS Information"),
                 lambda: self.ActivateHandler('MENU_PROPERTIES'), self.UpdateFieldsPROPERTIES ],
-            [ 'MENU_POOL', Lang("Set Node Type"),
+            [ 'MENU_NODETYPE', Lang("Set Node Type"),
                 lambda: self.ActivateHandler('MENU_NODETYPE'), self.UpdateFieldsPOOL],
-            [ 'MENU_TECHNICAL', Lang("Repertory Support"),
-                lambda: self.ActivateHandler('MENU_TECHNICAL'), self.UpdateFieldsTECHNICAL ],
+            [ 'MENU_REPERTORY', Lang("Set Repertory"),
+                lambda: self.ActivateHandler('MENU_REPERTORY'), self.UpdateFieldsTECHNICAL ],
             [ 'MENU_REBOOTSHUTDOWN', Lang("Reboot or Shutdown"),
                 lambda: self.ActivateHandler('MENU_REBOOTSHUTDOWN'), self.UpdateFieldsREBOOTSHUTDOWN ]
         ]
