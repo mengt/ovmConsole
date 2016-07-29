@@ -85,35 +85,28 @@ class Data:
         if status != 0:
             # Use test dmidecode file if there's no real output
             (status, output) = commands.getstatusoutput("/bin/cat ./dmidecode.txt")
-        
         if status == 0:
             self.ScanDmiDecode(output.split("\n"))
      
         (status, output) = commands.getstatusoutput("/sbin/lspci -m")
         if status != 0:
             (status, output) = commands.getstatusoutput("/usr/bin/lspci -m")
-
         if status == 0:
+            #获得pci设备信息
             self.ScanLspci(output.split("\n"))
      
         if os.path.isfile("/usr/bin/ipmitool"):
             (status, output) = commands.getstatusoutput("/usr/bin/ipmitool mc info")
             if status == 0:
+                #获取ipmi信息
                 self.ScanIpmiMcInfo(output.split("\n"))
         
         # /proc/cpuinfo has details of the virtual CPUs exposed to DOM-0, not necessarily the real CPUs
         (status, output) = commands.getstatusoutput("/bin/cat /proc/cpuinfo")
         if status == 0:
+            #获得cpu信息
             self.ScanCPUInfo(output.split("\n"))
 
-        (status, output) = commands.getstatusoutput("/usr/bin/openssl x509 -in /etc/xensource/xapi-ssl.pem -fingerprint -noout")
-        if status == 0:
-            fp = output.split("=")
-            if len(fp) >= 2:
-                self.data['sslfingerprint'] = fp[1]
-            else:
-                self.data['sslfingerprint'] = "<Unknown>"
-        
         try:
             #通过hostname文件获得节点名称
             self.data['hostname'] = ShellPipe('hostname').AllOutput()[0]
@@ -123,18 +116,11 @@ class Data:
             #通过/etc/system-release文件获得节点版本
             self.data['version'] = ShellPipe('/usr/bin/cat','/etc/system-release').AllOutput()[0]
         except:
-            self.data['version'] = Lang('<Unknown>')
-        try:
-            self.data['sshfingerprint'] = ShellPipe('/usr/bin/ssh-keygen', '-lf', '/etc/ssh/ssh_host_rsa_key.pub').AllOutput()[0].split(' ')[1]
-        except:
-            self.data['sshfingerprint'] = Lang('<Unknown>')
-        
-        try:
-            self.data['state_on_usb_media'] = ( ShellPipe('/bin/bash', '-c', 'source /opt/xensource/libexec/oem-functions; if state_on_usb_media; then exit 1; else exit 0; fi').CallRC() != 0 )
-        except:
-            self.data['state_on_usb_media'] = True
-    
-
+            self.data['version'] = Lang('<Unknown>')   
+        # try:
+        #     self.data['state_on_usb_media'] = ( ShellPipe('/bin/bash', '-c', 'source /opt/xensource/libexec/oem-functions; if state_on_usb_media; then exit 1; else exit 0; fi').CallRC() != 0 )
+        # except:
+        #     self.data['state_on_usb_media'] = True
 
         self.Update()
     
@@ -157,122 +143,23 @@ class Data:
         self.RequireSession()
         if self.session is not None:
             try:
-                self.data['host'] = None
                 self.data['host']['opaqueref'] = None
-                
                 # Expand the items we need in the host record
                 self.data['host']['metrics'] = None
-                
-                try:
-                    self.data['host']['suspend_image_sr'] = None
-                    # NULL or dangling reference
-                except:
-                    self.data['host']['suspend_image_sr'] = None
-                    
-                try:
-                    self.data['host']['crash_dump_sr'] = None
-                except:
-                    # NULL or dangling reference
-                    self.data['host']['crash_dump_sr'] = None
-                
+                #self.data['host']['host_CPUs']=None
                 convertCPU = lambda cpu: None
-                self.data['host']['host_CPUs'] = map(convertCPU, self.data['host']['host_CPUs'])
-                
-                def convertPIF(inPIF):
-                    retVal = {}
-                    try:
-                        retVal['metrics'] = None
-                    except e:
-                        retVal['metrics' ] = None
-                    
-                    try:
-                        retVal['network'] = None
-                    except e:
-                        ovmLogError('Missing network record: ', e)
-                        
-                    retVal['opaqueref'] = inPIF
-                    return retVal
-    
-                self.data['host']['PIFs'] = map(convertPIF, self.data['host']['PIFs'])
-    
-                # Create missing PIF names
-                for pif in self.data['host']['PIFs']:
-                    if pif['metrics']['device_name'] == '':
-                        if not pif['physical']:
-                            # Bonded PIF
-                            pif['metrics']['device_name'] = Lang("Virtual PIF within ")+pif['network'].get('name_label', Lang('<Unknown>'))
-                        else:
-                            pif['metrics']['device_name'] = Lang('<Unknown>')
-    
-                # Sort PIFs by device name for consistent order
-                self.data['host']['PIFs'].sort(lambda x, y : cmp(x['device'], y['device']))
-
-                def convertVBD(inVBD):
-                    return None
-                    
-                def convertVDI(inVDI):
-                    return None
-                    
-                def convertPBD(inPBD):
-                    return None
-                    
-                self.data['host']['PBDs'] = map(convertPBD, self.data['host']['PBDs'])
-
-                # Only load the to DOM-0 VM to save time
-                vmList = self.data['host']['resident_VMs']
-                
+                # self.data['host']['host_CPUs'] = map(convertCPU, self.data['host']['host_CPUs'])
+                # self.data['host']['host_CPUs']['modelname'] = 10
                 pools = None
-                
-                def convertPool(inID, inPool):
-                    retPool = inPool
-                    retPool['opaqueref'] = inID
-                    try:
-                        retPool['master_uuid'] = None
-                    except:
-                        retPool['master_uuid'] = None
-
-                    # SRs in the pool record are often apparently valid but dangling references.
-                    # We fetch the uuid to determine whether the SRs are real.
-                    try:
-                        retPool['default_SR_uuid'] = None
-                    except:
-                        retPool['default_SR_uuid'] = None
-
-                    try:
-                        retPool['suspend_image_SR_uuid'] = None
-                    except:
-                        retPool['suspend_image_SR_uuid'] = None
-                        
-                    try:
-                        retPool['crash_dump_SR_uuid'] = None
-                    except:
-                        retPool['crash_dump_SR_uuid'] = None
-                    return retPool
-                
-                self.data['pools'] = {}
-                for id, pool in pools.iteritems():
-                   self.data['pools'][id] = convertPool(id, pool)
 
             except socket.timeout:
                 self.session = None
             except Exception, e:
                 ovmLogError('Data update failed: ', e)
 
-            try:
-                self.data['sr'] = []
-
-                pbdRefs = []
-                for pbd in self.data['host'].get('PBDs', []):
-                    pbdRefs.append(pbd['opaqueref'])
-                    
-                    
-            except Exception, e:
-                ovmLogError('SR data update failed: ', e)
-
         self.UpdateFromResolveConf()
         self.UpdateFromSysconfig()
         self.UpdateFromNTPConf()
-        self.UpdateFromTimezone()
         
         if os.path.isfile("/sbin/chkconfig"):
             (status, output) = commands.getstatusoutput("/sbin/chkconfig --list sshd && /sbin/chkconfig --list ntpd")
@@ -284,8 +171,8 @@ class Data:
     def DeriveData(self):
         self.data.update({
             'derived' : {
-                'app_name' : Lang("UniCenter"),
-                'full_app_name' : Lang("Esage UniCenter"),
+                'app_name' : Lang("OpenGear"),
+                'full_app_name' : Lang("Ovm OpenGear"),
                 'cpu_name_summary' : {}
             }
         })
@@ -303,19 +190,8 @@ class Data:
                 else:
                     cpuNameSummary[name] = 1        
         
-        # Select the current management PIFs
         self.data['derived']['managementpifs'] = []
-        if 'PIFs' in self.data['host']:
-            for pif in self.data['host']['PIFs']:
-                if pif['management']:
-                    self.data['derived']['managementpifs'].append(pif)
-        
-        # Add a reference to the DOM-0 VM
-        if 'resident_VMs' in self.data['host']:
-            for vm in self.data['host']['resident_VMs']:
-                if 'domid' in vm and vm['domid'] == '0':
-                    self.data['derived']['dom0_vm'] = vm
-     
+
         # Calculate the full version string
         version = self.host.software_version.product_version(self.host.software_version.platform_version())
         version += '-' + self.host.software_version.build_number('')
@@ -644,12 +520,6 @@ class Data:
                     # Store only those entries starting with one of our known prefixes
                     self.data['timezones']['cities'][localPath] = filePath
 
-    def UpdateFromTimezone(self):
-        if os.path.isfile('/etc/timezone'):
-            file = open('/etc/timezone')
-            self.data['timezones']['current'] = file.readline().rstrip()
-            file.close()
-
     def TimezoneSet(self, inTimezone):
         localtimeFile = '/etc/localtime'
         if os.path.isfile(localtimeFile):
@@ -685,27 +555,7 @@ class Data:
                 break
         return retVal
         
-    def GetSRFromDevice(self, inDevice):
-        retVal = None
 
-        for pbd in self.host.PBDs([]):
-            device = pbd.get('device_config', {}).get('device', '')
-            if self.RemovePartitionSuffix(device) == inDevice:
-                # This is the PBD containing the device.  Does it have an SR?
-                sr = pbd.get('SR', None)
-                if sr.get('name_label', None) is not None:
-                    retVal = sr
-        return retVal
-    
-    def SetPoolSRIfRequired(self, inOpaqueRef):
-        pass
-
-    def SetPoolSRsFromDeviceIfNotSet(self, inDevice):
-        sr = self.GetSRFromDevice(inDevice)
-        if sr is None:
-            raise Exception(Lang("Device does not have an associated SR"))
-
-        self.SetPoolSRIfRequired(sr['opaqueref'])
 
     def GetPoolForThisHost(self):
         self.RequireSession()
@@ -811,93 +661,6 @@ class Data:
     
         return retVal
 
-    def VBDGetRecord(self, inVBD):
-        self.RequireSession()
-
-        vbdRecord = {}
-        vbdRecord['opaqueref'] = inVBD
-        
-        return vbdRecord
-
-    def CreateVBD(self, inVM, inVDI, inDeviceNum, inMode = None,  inType = None):
-        self.RequireSession()
-        
-        vbd = {
-            'VM' : inVM['opaqueref'],
-            'VDI' : inVDI['opaqueref'], 
-            'userdevice' : inDeviceNum, 
-            'mode' : FirstValue(inMode, 'ro'),
-            'bootable' : False, 
-            'type' : FirstValue(inType, 'disk'), 
-            'unpluggable' : True,
-            'empty' : False, 
-            'other_config' : { 'ovmconsole_tmp' : 'Created: '+time.asctime(time.gmtime()) }, 
-            'qos_algorithm_type' : '', 
-            'qos_algorithm_params' : {}
-        }
-
-        newVBD = None
-
-        return self.VBDGetRecord(newVBD)
-    
-    def PlugVBD(self, inVBD):
-        def TimedOp():
-            pass
-            
-        TimeUtils.TimeoutWrapper(TimedOp, self.DISK_TIMEOUT_SECONDS)
-        
-        # Must reread to get filled-in device fieldcat 
-        return self.VBDGetRecord(inVBD['opaqueref'])
-        
-    def UnplugVBD(self, inVBD):
-        return None
-
-    def DestroyVBD(self, inVBD):
-        pass
-
-    def PurgeVBDs(self):
-        # Destroy any VBDs that ovmconsole created but isn't using
-        
-        vbdRefs = {} # Use a dict to remove duplicates
-        
-        # Iterate through all VBDs we know about
-        for pbd in Data.Inst().host.PBDs([]):
-            sr = pbd.get('SR', {})
-            for vdi in sr.get('VDIs', []):
-                for vbd in vdi.get('VBDs', []):
-                    if 'ovmconsole_tmp' in vbd.get('other_config', {}):
-                        vbdRefs[ vbd['opaqueref'] ] = vbd
-        
-        for vbd in vbdRefs.values():
-            try:
-                # Currently this won't destroy mounted VBDs
-                if vbd['currently_attached']:
-                    self.UnplugVBD(vbd)
-                self.DestroyVBD(vbd)
-            except Exception, e:
-                ovmLogError('VBD purge failed', e)
-    
-    def IsXAPIRunning(self):
-        try:
-            if ShellPipe('/sbin/pidof', '-s',  '/opt/xensource/bin/xapi').CallRC() == 0:
-                retVal = True
-            else:
-                retVal = False
-        except:
-            retVal = False
-        return retVal
-        
-    def StopXAPI(self):
-        if self.IsXAPIRunning():
-            State.Inst().WeStoppedXAPISet(True)
-            State.Inst().SaveIfRequired()        
-            ShellPipe('/etc/init.d/xapi', 'stop').Call()
-                
-    def StartXAPI(self):
-        if not self.IsXAPIRunning():
-            ShellPipe('/etc/init.d/xapi', 'start').Call()
-            State.Inst().WeStoppedXAPISet(False)
-            State.Inst().SaveIfRequired()
     
     def EnableNTP(self):
         status, output = commands.getstatusoutput(

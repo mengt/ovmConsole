@@ -94,12 +94,6 @@ class State:
     def IsFirstBoot(self):
         return self.isFirstBoot
     
-    def WeStoppedXAPI(self):
-        return self.weStoppedXAPI
-        
-    def WeStoppedXAPISet(self, inValue):
-        self.weStoppedXAPI = inValue
-        self.modified = True
 
     def AuthTimeoutSecondsSet(self, inSeconds): # Don't call this directly - use Auth.TimeoutSecondsSet
         if inSeconds < 60:
