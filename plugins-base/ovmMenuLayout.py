@@ -68,70 +68,15 @@ class ovmMenuLayout:
 
         inPane.AddKeyHelpField( { Lang("<F5>") : Lang("Refresh")})
             
-    def UpdateFieldsMANAGEMENT(self, inPane):
-        data = Data.Inst()
-                
-        inPane.AddTitleField(Lang("Keyboard and Timezone"))
-    
-        inPane.AddWrappedTextField(Lang(
-            "This menu configures keyboard language and timezone."))
-        
-        inPane.NewLine()
-        if data.timezones.current('') != '':
-            inPane.AddWrappedTextField(Lang("The current timezone is"))
-            inPane.NewLine()
-            inPane.AddWrappedTextField(data.timezones.current(Lang('<Unknown>')))
-            inPane.NewLine()
-            
-        if data.keyboard.currentname('') != '':
-            inPane.AddWrappedTextField(Lang("The current keyboard type is"))
-            inPane.NewLine()
-            inPane.AddWrappedTextField(data.keyboard.currentname(Lang('<Default>')))
-
-    def UpdateFieldsVM(self, inPane):
-        hotData = HotData.Inst()
-
-        inPane.AddTitleField(Lang("Virtual Machines"))
-        
-        inPane.AddWrappedTextField(Lang('Press <Enter> to view the Virtual Machines menu.  This menu '
-            'can start, stop and migrate existing Virtual Machines on this host, and display '
-            'performance information.'))
-        inPane.NewLine()
-
-    def UpdateFieldsDISK(self, inPane):
-        data = Data.Inst()
-        inPane.AddTitleField(Lang("Disks and Storage Repositories"))
-    
-        inPane.AddWrappedTextField(Lang("Press <Enter> to create and attach Storage Repositories, select local  "
-            "disks to use as Storage Repositories, "
-            "and specify destinations for Suspend and Crash Dump images for this host."))
-        inPane.NewLine()
-    
-        inPane.AddWrappedBoldTextField(Lang('Suspend Image SR'))
-        if data.host.suspend_image_sr(False):
-            inPane.AddWrappedTextField(data.host.suspend_image_sr.name_label())
-        else:
-            inPane.AddWrappedTextField(Lang('<Not Configured>'))
-            
-        inPane.NewLine()
-            
-        inPane.AddWrappedBoldTextField(Lang('Crash Dump SR'))
-        if data.host.crash_dump_sr(False):
-            inPane.AddWrappedTextField(data.host.crash_dump_sr.name_label())
-        else:
-            inPane.AddWrappedTextField(Lang('<Not Configured>'))
-            
-        inPane.AddKeyHelpField( {
-            Lang("<F5>") : Lang("Refresh")
-        })
-    
+ 
     def UpdateFieldsPOOL(self, inPane):
         data = Data.Inst()
-        inPane.AddTitleField(Lang("Resource Pool Configuration"))
+        inPane.AddTitleField(Lang("Kvm And Dcoker Service"))
     
-        inPane.AddWrappedTextField(Lang('A Resource Pool allows a number of hosts to share resources '
-            'and migrate running Virtual Machines between hosts.  Press <Enter> to add this host a Resource Pool '
-            'or remove it from its current Pool.'))
+        inPane.AddWrappedTextField(Lang(
+            "From this menu you can "
+            "Set the start and stop of KVM and docker services."))
+
         inPane.NewLine()
 
     def UpdateFieldsREBOOTSHUTDOWN(self, inPane):
@@ -141,25 +86,12 @@ class ovmMenuLayout:
             "This option can reboot or shutdown this server."))
         
     def UpdateFieldsTECHNICAL(self, inPane):
-        inPane.AddTitleField(Lang("Technical Support"))
+        inPane.AddTitleField(Lang("Remote Repertory"))
     
         inPane.AddWrappedTextField(Lang(
             "From this menu you can "
-            "validate the configuration of this server and upload or save bug reports."))
+            "Set KVM and Docker remote Repertory."))
 
-    def UpdateFieldsREMOTE(self, inPane):
-        data = Data.Inst()
-        inPane.AddTitleField(Lang("Remote Service Configuration"))
-    
-        inPane.AddWrappedTextField(Lang("This menu configures remote services, such as access by "
-            "remote shell (ssh) and remote logging (syslog) to other servers."))
-
-    def UpdateFieldsBUR(self, inPane):
-        inPane.AddTitleField(Lang("Backup, Restore and Update"))
-   
-        inPane.AddWrappedTextField(Lang(
-            "From this menu you can backup and restore the system database and Virtual Machine metadata, and apply "
-            "software updates to the system."))
 
     def ActivateHandler(self, inName):
         Layout.Inst().TopDialogue().ChangeMenu(inName)
