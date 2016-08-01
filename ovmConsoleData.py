@@ -117,10 +117,6 @@ class Data:
             self.data['version'] = ShellPipe('/usr/bin/cat','/etc/system-release').AllOutput()[0]
         except:
             self.data['version'] = Lang('<Unknown>')   
-        # try:
-        #     self.data['state_on_usb_media'] = ( ShellPipe('/bin/bash', '-c', 'source /opt/xensource/libexec/oem-functions; if state_on_usb_media; then exit 1; else exit 0; fi').CallRC() != 0 )
-        # except:
-        #     self.data['state_on_usb_media'] = True
 
         self.Update()
     
@@ -144,14 +140,9 @@ class Data:
         if self.session is not None:
             try:
                 self.data['host']['opaqueref'] = None
-                # Expand the items we need in the host record
                 self.data['host']['metrics'] = None
-                #self.data['host']['host_CPUs']=None
                 convertCPU = lambda cpu: None
-                # self.data['host']['host_CPUs'] = map(convertCPU, self.data['host']['host_CPUs'])
-                # self.data['host']['host_CPUs']['modelname'] = 10
                 pools = None
-
             except socket.timeout:
                 self.session = None
             except Exception, e:
@@ -683,15 +674,102 @@ class Data:
         status, output = commands.getstatusoutput("/usr/bin/ntpstat")
         return output
             
-    def SetVerboseBoot(self, inVerbose):
-        if inVerbose:
-            name = 'noisy'
-        else:
-            name = 'quiet'
+    def getStatusKVM(self):
+        '''获得libvirt服务的状态'''
+        try:
+            status, output = commands.getstatusoutput("systemctl status libvirtd.service |grep active")
+            if status != 0 :
+                raise Exception(output)
+                return False
+            elif 'dead' in output:
+                return False
+            else:
+                return True
+        except Exception, e:
+            raise e
+            return False
 
-        status, output = commands.getstatusoutput(
-            "(export TERM=xterm && /opt/xensource/libexec/set-boot " + name + ")")
-        if status != 0:
-            raise Exception(output)
-            
-        State.Inst().VerboseBootSet(inVerbose)
+    def setEnableKVM(self):
+        '''开启libvirt服务'''
+        try:
+            (status, output) = commands.getstatusoutput("/bin/systemctl start  libvirtd.service")
+            if status != 0:
+                (status, output) = commands.getstatusoutput("/bin/systemctl enable  libvirtd.service")
+        except Exception, e:
+            raise e
+
+    def setDisableKVM(self):
+        '''关闭libvirt服务'''
+        try:
+            (status, output) = commands.getstatusoutput("/bin/systemctl stop  libvirtd.service")
+            if status != 0:
+                (status, output) = commands.getstatusoutput("/bin/systemctl disable  libvirtd.service")
+        except Exception, e:
+            raise e
+
+    def getStatusDOCKER(self):
+        '''获得docker服务的状态'''
+        try:
+            status, output = commands.getstatusoutput("systemctl status docker.service |grep active")
+            if status != 0 :
+                raise Exception(output)
+                return False
+            elif 'dead' in output:
+                return False
+            else:
+                return True
+        except Exception, e:
+            raise e
+            return False 
+
+    def setEnableDOCKER(self):
+        '''启动docker服务'''
+        try:
+            (status, output) = commands.getstatusoutput("/bin/systemctl start  docker.service")
+            if status != 0:
+                (status, output) = commands.getstatusoutput("/bin/systemctl enable  docker.service")
+        except Exception, e:
+            raise e
+
+    def setDisableDOCKER(self):
+        '''关闭docker服务'''
+        try:
+            (status, output) = commands.getstatusoutput("/bin/systemctl stop  docker.service")
+            if status != 0:
+                (status, output) = commands.getstatusoutput("/bin/systemctl disable  docker.service")
+        except Exception, e:
+            raise e
+
+
+    def getStatusDOCKER_R(self):
+        '''获得docker仓库的状态'''
+        try:
+            status, output = commands.getstatusoutput("/bin/systemctl status docker-registry |grep active")
+            if status != 0 :
+                raise Exception(output)
+                return False
+            elif 'dead' in output:
+                return False
+            else:
+                return True
+        except Exception, e:
+            raise e
+            return False 
+
+    def setEnableDOCKER_R(self):
+        '''启动docker仓库'''
+        try:
+            (status, output) = commands.getstatusoutput("/bin/systemctl start  docker-registry")
+            if status != 0:
+                (status, output) = commands.getstatusoutput("/bin/systemctl  docker-registry on")
+        except Exception, e:
+            raise e
+
+    def setDisableDOCKER_R(self):
+        '''关闭docker仓库'''
+        try:
+            (status, output) = commands.getstatusoutput("/bin/systemctl stop  docker-registry")
+            if status != 0:
+                (status, output) = commands.getstatusoutput("/bin/systemctl docker-registry off")
+        except Exception, e:
+            raise e
