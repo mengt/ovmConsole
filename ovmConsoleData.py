@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #-*-coding:utf-8-*-
 
-import commands, re, shutil, sys, tempfile, socket
+import commands, re, shutil, sys, tempfile, socket, ConfigParser
 from pprint import pprint
 from simpleconfig import SimpleConfigFile
 
@@ -29,6 +29,12 @@ class Data:
     def __init__(self):
         self.data = {}
         self.session = None
+        self.fstab_path = "/etc/fstab"
+        self.mtab_path = "/etc/mtab"
+        self.repository_path = "/opt/templatelibrary"
+        self.defaulturl = "<nfs-ip>:/vmimage"
+        self.dockerConfig = "/etc/sysconfig/docker"
+        self.docker_registryURl = "<ip>:5000"
     
     @classmethod
     def Inst(cls):
@@ -135,7 +141,6 @@ class Data:
     def Update(self):
         '''更新动态数据'''
         self.data['host'] = {}
-
         self.RequireSession()
         if self.session is not None:
             try:
@@ -151,6 +156,7 @@ class Data:
         self.UpdateFromResolveConf()
         self.UpdateFromSysconfig()
         self.UpdateFromNTPConf()
+        self.check_mount()
         
         if os.path.isfile("/sbin/chkconfig"):
             (status, output) = commands.getstatusoutput("/sbin/chkconfig --list sshd && /sbin/chkconfig --list ntpd")
@@ -773,3 +779,111 @@ class Data:
                 (status, output) = commands.getstatusoutput("/bin/systemctl docker-registry off")
         except Exception, e:
             raise e
+
+
+    # def getStatusWEB(self):
+    #     '''获得WEB服务的状态'''
+    #     try:
+    #         status, output = commands.getstatusoutput("systemctl status docker.service |grep active")
+    #         if status != 0 :
+    #             raise Exception(output)
+    #             return False
+    #         elif 'dead' in output:
+    #             return False
+    #         else:
+    #             return True
+    #     except Exception, e:
+    #         raise e
+    #         return False 
+
+    # def setEnableWEB(self):
+    #     '''启动WEB服务'''
+    #     try:
+    #         (status, output) = commands.getstatusoutput("/bin/systemctl start  docker.service")
+    #         if status != 0:
+    #             (status, output) = commands.getstatusoutput("/bin/systemctl enable  docker.service")
+    #     except Exception, e:
+    #         raise e
+
+    # def setDisableWEB(self):
+    #     '''关闭WEB服务'''
+    #     try:
+    #         (status, output) = commands.getstatusoutput("/bin/systemctl stop  docker.service")
+    #         if status != 0:
+    #             (status, output) = commands.getstatusoutput("/bin/systemctl disable  docker.service")
+    #     except Exception, e:
+    #         raise e
+
+#测试ip,进行挂载
+    def check_mount(self):
+        '''检测是否已经挂载'''
+        if os.path.exists(self.mtab_path):
+            with open(self.mtab_path,"rt") as f:
+                for line in f:
+                    if self.repository_path in line:
+                        self.defaulturl =line.split(' ')[0]
+                        return True
+        return False
+
+    def set_nfs_url(self,url):
+        '''将挂载配置写入开机启动挂载'''
+        if ps.path.exists(self.fstab_path):
+            with open(self.fstab_path,"r+a") as f:
+                for line in f:
+                    if self.repository_path in line:
+                        return False
+                f.write(url+' '+self.repository_path+' nfs    defaults        0 0\n')
+                f.close()
+
+    def mount_nfs(self,url):
+        try:
+            (status, output) = commands.getstatusoutput("timeout 4 mount "+url+" "+self.repository_path)
+            if status != 0:
+                return False
+        except Exception, e:
+            ovmLog('Cannot mount '+ url +' repository')
+            return False
+        return True
+
+    def check_nfs_url(self, url, Symbol):
+        '''使用socat.inet_aton方法来判断用户输入的IP得治是否正确'''
+        if Symbol  in url:
+            try:
+                s = socket.inet_aton(url.split(Symbol)[0])
+                return True
+            except socket.error,e:
+                pass
+        return False  
+
+    def check_docker_dir(self):
+        if os.path.exists(self.dockerConfig):
+            with open(self.dockerConfig,"r") as df:
+                for line in df:
+                    if "INSECURE_REGISTRY='--insecure-registry" in line and "#INSECURE_REGISTRY='--insecure-registry" not in line:
+                        self.docker_registryURl = line.split(' ')[-1].split("'")[0]
+                        return True
+        return False
+    def update_docker_dir(self, url):
+        floor_return = True
+        Con_read = open(self.dockerConfig,'r')
+        read_str = Con_read.readlines()
+        Con_read.close()
+        Con_save = open(self.dockerConfig,'w')
+        try:
+            for line in read_str:
+                if "ADD_REGISTRY='--add-registry" in line or "#ADD_REGISTRY='--add-registry"  in line:
+                    read_str[read_str.index(line)]  = "ADD_REGISTRY='--add-registry "+url+"'\n"
+                if "INSECURE_REGISTRY='--insecure-registry" in line or "#INSECURE_REGISTRY='--insecure-registry" in line:
+                    read_str[read_str.index(line)]  = "INSECURE_REGISTRY='--insecure-registry "+url+"'\n"
+            #read_str.append("ADD_REGISTRY='--add-registry 192.168.1.66:5000'\n")
+            #read_str.append("INSECURE_REGISTRY='--insecure-registry 192.168.1.66:5000'\n")
+            Con_save.writelines(read_str)
+        except Exception, e:
+            floor_return = False
+            raise e
+        finally:
+            Con_save.close()
+            return floor_return
+            
+        
+

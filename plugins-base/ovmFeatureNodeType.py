@@ -74,39 +74,76 @@ class ovmFeatureNodeType:
         Layout.Inst().PushDialogue(QuestionDialogue(message, lambda x: cls.DockerReplyHandler(x)))
 
 
+    @classmethod
+    def StatusUpdateHandlerDOCKERREPERTORY(cls, inPane):
+        if Data().Inst().getStatusDOCKER_R():
+            inPane.AddTitleField(Lang('Docker Repertory Is Enabled'))
+            inPane.AddWrappedTextField(Lang('Press <Enter> to Disable'))
+            inPane.AddKeyHelpField({Lang("F5") : Lang("Refresh")}) 
+        else:
+            inPane.AddTitleField(Lang('Docker Repertory Is Disable'))
+            inPane.AddWrappedTextField(Lang('Press <Enter> to Enable'))
+            inPane.AddKeyHelpField({Lang("F5") : Lang("Refresh")})   
+
+    @classmethod
+    def DockerREPERTORYReplyHandler(cls,  inYesNo):
+        if inYesNo == 'y':
+            if Data.Inst().getStatusDOCKER_R():
+                try:
+                    Layout.Inst().ExitBannerSet(Lang("Disable..."))
+                    Data().Inst().setDisableDOCKER_R()
+                    ovmLog('Docker Repertory Disable')
+                except Exception, e:
+                    Layout.Inst().PushDialogue(InfoDialogue(Lang("Docker Repertory Disable Failed"), Lang(e)))
+            else:
+                try:
+                    Layout.Inst().ExitBannerSet(Lang("Enable..."))
+                    Data().Inst().setEnableDOCKER_R()
+                    ovmLog('Docker Repertory Enable')
+                except Exception, e:
+                    Layout.Inst().PushDialogue(InfoDialogue(Lang("Docker Repertory Enable Failed"), Lang(e)))
+
+    @classmethod
+    def activatehandlerDOCKERREPERTORY(cls,*inParams):
+        message = FirstValue(None, Lang("Do you want to Enable/Disable this docker Repertory?"))
+        Layout.Inst().PushDialogue(QuestionDialogue(message, lambda x: cls.DockerREPERTORYReplyHandler(x)))
+
+
     # @classmethod
-    # def StatusUpdateHandlerDOCKERREPERTORY(cls, inPane):
-    #     if Data().Inst().getStatusDOCKER()_R:
-    #         inPane.AddTitleField(Lang('Docker Repertory Is Enabled'))
+    # def StatusUpdateHandlerWebManager(cls, inPane):
+    #     if Data().Inst().getStatusKVM():
+    #         inPane.AddTitleField(Lang('Web Management Is Enabled'))
+    #         inPane.AddWrappedTextField(Lang('Please visit the localhost ip:8888 to use the website management platform'))
+    #         inPane.NewLine()
     #         inPane.AddWrappedTextField(Lang('Press <Enter> to Disable'))
     #         inPane.AddKeyHelpField({Lang("F5") : Lang("Refresh")}) 
     #     else:
-    #         inPane.AddTitleField(Lang('Docker Repertory Is Disable'))
+    #         inPane.AddTitleField(Lang('Web Management Is Disable'))
     #         inPane.AddWrappedTextField(Lang('Press <Enter> to Enable'))
-    #         inPane.AddKeyHelpField({Lang("F5") : Lang("Refresh")})   
+    #         inPane.AddKeyHelpField({Lang("F5") : Lang("Refresh")}) 
 
     # @classmethod
-    # def DockerREPERTORYReplyHandler(cls,  inYesNo):
+    # def webMangerReplyHandler(cls,  inYesNo):
     #     if inYesNo == 'y':
-    #         if Data.Inst().getStatusDOCKER_R():
+    #         if Data().Inst().getStatusWEB():
     #             try:
     #                 Layout.Inst().ExitBannerSet(Lang("Disable..."))
-    #                 Data().Inst().setDisableDOCKER_R()
-    #                 ovmLog('Docker Repertory Disable')
+    #                 Data().Inst().setDisableWEB()                    
+    #                 ovmLog('Web Management Disable')
     #             except Exception, e:
-    #                 Layout.Inst().PushDialogue(InfoDialogue(Lang("Docker Repertory Disable Failed"), Lang(e)))
+    #                 Layout.Inst().PushDialogue(InfoDialogue(Lang("Web Management Disable Failed"), Lang(e)))
     #         else:
     #             try:
     #                 Layout.Inst().ExitBannerSet(Lang("Enable..."))
-    #                 Data().Inst().setEnableDOCKER_R()
-    #                 ovmLog('Docker Repertory Enable')
+    #                 Data().Inst().setEnableWEB()
+    #                 ovmLog('Web Management Enable')
     #             except Exception, e:
-    #                 Layout.Inst().PushDialogue(InfoDialogue(Lang("Docker Repertory Enable Failed"), Lang(e)))
+    #                 Layout.Inst().PushDialogue(InfoDialogue(Lang("Web Management Enable Failed"), Lang(e)))
 
     # @classmethod
-    # def activatehandlerDOCKERREPERTORY(cls,*inParams):
-    #     message = FirstValue(None, Lang("Do you want to Enable/Disable this docker Repertory?"))
-    #     Layout.Inst().PushDialogue(QuestionDialogue(message, lambda x: cls.DockerREPERTORYReplyHandler(x)))
+    # def activatehandlerwebmanager(cls,*inParams):
+    #     message = FirstValue(None, Lang("Do you want to Enable/Disable this Web Management?"))
+    #     Layout.Inst().PushDialogue(QuestionDialogue(message, lambda x: cls.webMangerReplyHandler(x)))
 
     def Register(self):
         
@@ -136,16 +173,29 @@ class ovmFeatureNodeType:
             }
         )
             
+        Importer.RegisterNamedPlugIn(
+            self,
+            'DOCKER_R_REPERTORY', # Key of this plugin for replacement, etc.
+            {
+                #'title' : Lang('Enable/disable Docker Repertory'), # Name of this plugin for plugin list
+                'menuname' : 'MENU_NODETYPE',
+                'menupriority' : 300,
+                'menutext' : Lang('Enable/disable Docker Repertory') ,
+                'statusupdatehandler' : self.StatusUpdateHandlerDOCKERREPERTORY,
+                'activatehandler' : self.activatehandlerDOCKERREPERTORY
+            }
+        )
+
         # Importer.RegisterNamedPlugIn(
         #     self,
-        #     'ENABLEDISABLE_DOCKER_REPERTORY', # Key of this plugin for replacement, etc.
+        #     'WEB_MANAGER', # Key of this plugin for replacement, etc.
         #     {
-        #         'title' : Lang('Enable/disable Docker_R Repertory'), # Name of this plugin for plugin list
+        #         #'title' : Lang('Enable/disable Docker Repertory'), # Name of this plugin for plugin list
         #         'menuname' : 'MENU_NODETYPE',
-        #         'menupriority' : 201,
-        #         'menutext' : Lang('Enable/disable Docker Repertory') ,
-        #         'statusupdatehandler' : self.StatusUpdateHandlerDOCKERREPERTORY,
-        #         'activatehandler' : self.activatehandlerDOCKERREPERTORY
+        #         'menupriority' : 400,
+        #         'menutext' : Lang('Enable/disable Web Management') ,
+        #         'statusupdatehandler' : self.StatusUpdateHandlerWebManager,
+        #         'activatehandler' : self.activatehandlerwebmanager
         #     }
         # )
 

@@ -9,45 +9,51 @@ class KvmInputDialogue(InputDialogue):
         self.custom = {
             'title' : Lang("Kvm Repertory Address"),
             'info' : Lang("Please enter the IP address for remote NFS"), 
-            #'fields' : [ [Lang("Destination", 20), Data.Inst().host.logging.syslog_destination(''), 'destination'] ]
-            'fields' : [ [Lang("IP address", 20), '192.168.0.1', 'destination'] ]
+            'fields' : [ [Lang("IP address", 20), Data.Inst().defaulturl, 'destination'] ]
             }
         InputDialogue.__init__(self)
 
     def HandleCommit(self, inValues):
-        #Layout.Inst().TransientBanner(Lang("Setting Logging Destination..."))
-
         hostname = inValues['destination']
-        #Data.Inst().LoggingDestinationSet(hostname)
-        #Data.Inst().Update()
-        ovmLog(hostname)
-        return Lang('Logging Destination Change Successful'), hostname   
+        D_def = Data.Inst()
+        if D_def.check_mount():
+            return Lang("Can't mount!"),"Directory has been used!"
+        elif not D_def.check_nfs_url(hostname, ':/'):
+            return Lang("URL incorrect-niu"),"Please enter a URL with the form:<ip>:<mountpoint>"
+        elif not D_def.mount_nfs(hostname):
+            return Lang("Can't mount!"),"Mountpoint not valid or access denied."
+        else:
+            Data.Inst().Update()
+            ovmLog(hostname) 
+            return Lang('Mount Successful'),hostname
 
 class DockerInputDialogue(InputDialogue):
     def __init__(self):
         self.custom = {
             'title' : Lang("Docker Repertory Address"),
             'info' : Lang("Please enter the IP address for docker private Repertory"), 
-            #'fields' : [ [Lang("Destination", 20), Data.Inst().host.logging.syslog_destination(''), 'destination'] ]
-            'fields' : [ [Lang("IP address", 20), None, 'destination'] ]
+            'fields' : [ [Lang("IP address", 20), Data.Inst().docker_registryURl, 'destination'] ]
             }
         InputDialogue.__init__(self)
 
     def HandleCommit(self, inValues):
-        #Layout.Inst().TransientBanner(Lang("Setting Logging Destination..."))
-
         hostname = inValues['destination']
-        #Data.Inst().LoggingDestinationSet(hostname)
-        #Data.Inst().Update()
-        ovmLog(hostname)
-        return Lang('Logging Destination Change Successful'), hostname
+        D_def = Data.Inst()
+        if not D_def.check_nfs_url(hostname, ':'):
+            return Lang("URL incorrect-niu"),"Please enter a URL with the form:<ip>:<port>"
+        elif not D_def.update_docker_dir(hostname):
+            return Lang("Set field!"),"System error."
+        else:
+            Data.Inst().Update()
+            ovmLog(hostname) 
+            return Lang('Set Docker Repertory Address Successful,Please Restart Docker Daemon'),hostname
 
 class ovmFeatureRepertory:
     '''kvm Repertory address'''
     @classmethod
     def StatusUpdateHandlerKvmRepertory(cls, inPane):
         inPane.AddTitleField(Lang('KVM Repertory'))
-        inPane.AddWrappedTextField(Lang('Add: '))
+        inPane.AddWrappedTextField(Lang('Address: ' + Data.Inst().defaulturl))
         inPane.NewLine()
         inPane.AddWrappedTextField(Lang('Here is to fill in the OVM management platform for the NFS resource library virtual machine to provide a mirror storage'))
         inPane.AddKeyHelpField({Lang("F5") : Lang("Refresh")})   
@@ -58,8 +64,9 @@ class ovmFeatureRepertory:
 
     @classmethod
     def StatusUpdateHandlerDockerRepertory(cls, inPane):
+        Data.Inst().check_docker_dir()
         inPane.AddTitleField(Lang('Docker Repertory'))
-        inPane.AddWrappedTextField(Lang('Add:'))
+        inPane.AddWrappedTextField(Lang('Address: '+ Data.Inst().docker_registryURl))
         inPane.NewLine()
         inPane.AddWrappedTextField(Lang('Here is the docker of the private library address, user docker container creation'))
         inPane.AddKeyHelpField({Lang("F5") : Lang("Refresh")})       
