@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 #-*-coding:utf-8-*-
 
-import commands, re, shutil, sys, tempfile, socket, ConfigParser
+import commands, re, shutil, sys, tempfile, socket, ConfigParser, os
 from pprint import pprint
 from simpleconfig import SimpleConfigFile
+from ovirtnode.network import *
 
 from ovmConsoleAuth import *
 from ovmConsoleLang import *
@@ -112,12 +113,12 @@ class Data:
         if status == 0:
             #获得cpu信息
             self.ScanCPUInfo(output.split("\n"))
-
-        try:
-            #通过hostname文件获得节点名称
-            self.data['hostname'] = ShellPipe('hostname').AllOutput()[0]
-        except:
-            self.data['hostname'] = Lang('<Unknown>')
+        self.data['hostname'] = os.uname()[1]
+        # try:
+        #     #通过hostname文件获得节点名称
+        #     self.data['hostname'] = ShellPipe('hostname').AllOutput()[0]
+        # except:
+        #     self.data['hostname'] = Lang('<Unknown>')
         try:
             #通过/etc/system-release文件获得节点版本
             self.data['version'] = ShellPipe('/usr/bin/cat','/etc/system-release').AllOutput()[0]
@@ -886,4 +887,56 @@ class Data:
             return floor_return
             
         
+    def get_network_information(self):
+        self.nic_dict, self.configured_nics, self.ntp_dhcp = get_system_nics()
+        for key in sorted(self.nic_dict.iterkeys()):
+              dev_interface,dev_bootproto,dev_vendor,dev_address,dev_driver,dev_conf_status,dev_bridge = self.nic_dict[key].split(",", 6)
+        pass
+    def readntpconf(self,conf):
+        l = []
+        f = file(conf,'r')
+        for s in f:
+            if s.startswith('server'):
+                l.append(s.split(' ')[1][:-1])
+        f.close()
+        return l
+    def readdnsconf(self,conf):
+        l = []
+        f = file(conf,'r')
+        for s in f:
+            if s.startswith('nameserver'):
+                l.append(s.split(' ')[1][:-1])
+        f.close()
 
+        #获得DNS
+        # return l
+        #       try:
+        #       dnslist = self.readdnsconf(r'/etc/resolv.conf')
+        #       logger.info(str(dnslist))
+        #       try:
+        #           self.dns_host1.set(dnslist[0])
+        #           if len(dnslist)>1:
+        #               self.dns_host2.set(dnslist[1])
+                  
+        #       except Exception,e:
+        #           logger.error(e)
+        #           pass
+        #   except:
+        #   获得NTP
+          #   ntplist = self.readntpconf(r'/etc/ntp.conf')
+          # logger.info(str(ntplist))
+          # try:
+          #     self.ntp_host1.set(ntplist[0])
+          #     if len(ntplist)>1:
+          #         self.ntp_host2.set(ntplist[1])
+              
+          # except Exception,e:
+          #     logger.error(e)
+          #     获取设备IP.MAC，gateway
+        # current_ip = get_ip_address(dev)
+        #   if current_ip != "":
+        #       self.ipv4_netdevip.set(current_ip)
+        #   current_netmask = get_netmask(dev)
+        #   if current_netmask != "":
+        #       self.ipv4_netdevmask.set(current_netmask)
+        #   current_gateway = get_gateway(dev)
