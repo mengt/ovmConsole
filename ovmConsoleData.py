@@ -1,16 +1,18 @@
 #!/usr/bin/env python
 #-*-coding:utf-8-*-
 
-import commands, re, shutil, sys, tempfile, socket, ConfigParser, os
+import commands, re, shutil, sys, tempfile, socket, ConfigParser, os, gudev, fcntl
 from pprint import pprint
 from simpleconfig import SimpleConfigFile
-from ovirtnode.network import *
+import struct as STRUCT
+from glob import glob
 
 from ovmConsoleAuth import *
 from ovmConsoleLang import *
 from ovmConsoleLog import *
 from ovmConsoleState import *
 from ovmConsoleUtils import *
+from ovmConsoleBases import *
 
 class DataMethod:
     def __init__(self, inSend, inName):
@@ -634,30 +636,11 @@ class Data:
         return retVal
     
     def ManagementGateway(self, inDefault = None):
-        retVal = inDefault
-        
-        # FIXME: Address should come from API, but not available at present.  For DHCP this is just a guess at the gateway address
-        for pif in self.derived.managementpifs([]):
-            if pif['ip_configuration_mode'].lower().startswith('static'):
-                # For static IP the API address is correct
-                retVal = pif['gateway']
-            elif pif['ip_configuration_mode'].lower().startswith('dhcp'):
-                # For DHCP,  find the gateway address by parsing the output from the 'route' command
-                if 'bridge' in pif['network']:
-                    device = pif['network']['bridge']
-                else:
-                    device = pif['device']
-                routeRE = re.compile(r'([0-9.]+)\s+([0-9.]+)\s+([0-9.]+)\s+UG\s+\d+\s+\d+\s+\d+\s+'+device,
-                    re.IGNORECASE)
-    
-                routes = commands.getoutput("/sbin/route -n").split("\n")
-                for line in routes:
-                    match = routeRE.match(line)
-                    if match:
-                        retVal = match.group(2)
-                        break
-    
-        return retVal
+        cmd = "/usr/bin/cat /etc/sysconfig/network |grep GATEWAY"
+        (status, output) = commands.getstatusoutput(cmd)
+        if status != 0 :
+            return ''
+        return output.split('=')[1]
 
     
     def EnableNTP(self):
@@ -886,13 +869,11 @@ class Data:
             Con_save.close()
             return floor_return
             
-        
-    def get_network_information(self):
-        self.nic_dict, self.configured_nics, self.ntp_dhcp = get_system_nics()
-        for key in sorted(self.nic_dict.iterkeys()):
-              dev_interface,dev_bootproto,dev_vendor,dev_address,dev_driver,dev_conf_status,dev_bridge = self.nic_dict[key].split(",", 6)
-        pass
+ ####################network######################################       
+
     def readntpconf(self,conf):
+        # 获得NTP
+        #ntplist = self.readntpconf(r'/etc/ntp.conf')
         l = []
         f = file(conf,'r')
         for s in f:
@@ -900,43 +881,124 @@ class Data:
                 l.append(s.split(' ')[1][:-1])
         f.close()
         return l
+
     def readdnsconf(self,conf):
+        #获得DNS
+        #dnslist = self.readdnsconf(r'/etc/resolv.conf')
         l = []
         f = file(conf,'r')
         for s in f:
             if s.startswith('nameserver'):
                 l.append(s.split(' ')[1][:-1])
         f.close()
+        return l
 
-        #获得DNS
-        # return l
-        #       try:
-        #       dnslist = self.readdnsconf(r'/etc/resolv.conf')
-        #       logger.info(str(dnslist))
-        #       try:
-        #           self.dns_host1.set(dnslist[0])
-        #           if len(dnslist)>1:
-        #               self.dns_host2.set(dnslist[1])
-                  
-        #       except Exception,e:
-        #           logger.error(e)
-        #           pass
-        #   except:
-        #   获得NTP
-          #   ntplist = self.readntpconf(r'/etc/ntp.conf')
-          # logger.info(str(ntplist))
-          # try:
-          #     self.ntp_host1.set(ntplist[0])
-          #     if len(ntplist)>1:
-          #         self.ntp_host2.set(ntplist[1])
-              
-          # except Exception,e:
-          #     logger.error(e)
-          #     获取设备IP.MAC，gateway
-        # current_ip = get_ip_address(dev)
-        #   if current_ip != "":
-        #       self.ipv4_netdevip.set(current_ip)
-        #   current_netmask = get_netmask(dev)
-        #   if current_netmask != "":
-        #       self.ipv4_netdevmask.set(current_netmask)
-        #   current_gateway = get_gateway(dev)
+        
+    def get_system_nics(self):
+        client = gudev.Client(['net'])
+        configured_nics = 0
+        ntp_dhcp = 0
+        nic_dict = {}
+        for device in client.query_by_subsystem("net"):
+            try:
+                dev_interface = device.get_property("INTERFACE")
+                dev_vendor = device.get_property("ID_VENDOR_FROM_DATABASE")
+                dev_type = device.get_property("DEVTYPE")
+                dev_path = device.get_property("DEVPATH")
+                try:
+                    dev_vendor = dev_vendor.replace(",", "")
+                except AttributeError:
+                    try:
+                        # rhevh workaround since udev version doesn't have vendor info
+                        dev_path = dev_path.split('/')
+                        if "virtio" in dev_path[4]:
+                            pci_dev = dev_path[3].replace("0000:","")
+                        else:
+                            pci_dev = dev_path[4].replace("0000:","")
+                        pci_lookup_cmd = " lspci|grep %s|awk -F \":\" {'print $3'}" % pci_dev
+                        pci_lookup = subprocess.Popen(pci_lookup_cmd, shell=True, stdout=PIPE, stderr=STDOUT)
+                        dev_vendor = pci_lookup.stdout.read().strip()
+                    except:
+                        dev_vendor = "unknown"
+                try:
+                    dev_vendor = dev_vendor.replace(",", "")
+                except AttributeError:
+                    dev_vendor = "unknown"
+                dev_vendor = pad_or_trim(25, dev_vendor)
+                try:
+                    dev_driver = os.readlink("/sys/class/net/" + dev_interface + "/device/driver")
+                    dev_driver = os.path.basename(dev_driver)
+                except:
+                    pass
+                nic_addr_file = open("/sys/class/net/" + dev_interface + "/address")
+                dev_address = nic_addr_file.read().strip()
+                cmd = "/files/etc/sysconfig/network-scripts/ifcfg-%s/BOOTPROTO" % str(dev_interface)
+                dev_bootproto = augtool_get(cmd)
+                type_cmd = "/files/etc/sysconfig/network-scripts/ifcfg-%s/TYPE" % str(dev_interface)
+                bridge_cmd = "/files/etc/sysconfig/network-scripts/ifcfg-%s/BRIDGE" % str(dev_interface)
+                dev_bridge =  augtool_get(bridge_cmd)
+                if dev_bootproto is None:
+                    cmd = "/files/etc/sysconfig/network-scripts/ifcfg-%s/BOOTPROTO" % str(dev_bridge)
+                    dev_bootproto = augtool_get(cmd)
+                    if dev_bootproto is None:
+                        dev_bootproto = "Disabled"
+                        dev_conf_status = "Unconfigured"
+                        # check for vlans
+                        if len(glob("/etc/sysconfig/network-scripts/ifcfg-" + dev_interface + ".*")) > 0:
+                            #ovmLog("found vlan")
+                            dev_conf_status = "Configured  "
+                    else:
+                        dev_conf_status = "Configured  "
+                else:
+                    dev_conf_status = "Configured  "
+                if dev_conf_status == "Configured  ":
+                    configured_nics = configured_nics + 1
+            except Exception, e:
+                raise e
+            if "." in dev_interface:
+                dev_interface = dev_interface.split(".")[0]
+            if not dev_interface == "lo" and not dev_interface.startswith("bond") and not dev_interface.startswith("sit") and not "." in dev_interface:
+                if not dev_type == "bridge":
+                    nic_dict[dev_interface] = "%s,%s,%s,%s,%s,%s,%s" % (dev_interface,dev_bootproto,dev_vendor,dev_address, dev_driver, dev_conf_status,dev_bridge)
+                    if dev_bootproto == "dhcp":
+                        ntp_dhcp = 1
+        return nic_dict, configured_nics, ntp_dhcp
+        
+    # Check if networking is already up
+    def network_up(self):
+        ret = os.system("ip addr show | grep -q 'inet.*scope global'")
+        if ret == 0:
+            return True
+        return False
+
+    def get_ip_address(self, ifname):
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            ip = socket.inet_ntoa(fcntl.ioctl(s.fileno(),0x8915,STRUCT.pack('256s', ifname[:15]))[20:24])
+        except Exception,e:
+            #raise e
+            ip = ""
+        return ip
+
+    def get_netmask(self,ifname):
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            netmask = fcntl.ioctl(s, 0x891b, STRUCT.pack('256s', ifname))[20:24]
+            netmask = socket.inet_ntoa(netmask)
+        except:
+            netmask = ""
+        return netmask
+
+    def get_gateway(self,ifname):
+        cmd = "/usr/bin/cat /etc/sysconfig/network-scripts/ifcfg-"+ifname+" |grep GATEWAY0"
+        (status, output) = commands.getstatusoutput(cmd)
+        if status != 0 :
+            return ''
+        return output.split('=')[1]
+    
+    def get_dev_status(self,ifname):
+        cmd = "ip addr |grep "+ifname
+        (status, output) = commands.getstatusoutput(cmd)
+        if status != 0 or 'NO-CARRIER' in output:
+            return '(No connected)'
+        return '(connected)'
