@@ -22,7 +22,7 @@ class ovmLogger:
             syslog.syslog(inPriority, str(param))
 
     def logFailure(self, *inParams):
-        logString = "\n",join([str(param) for param in inParams])
+        logString = "\n".join([str(param) for param in inParams])
         message = Lang(Exception(logString))
 
     def ErrorLoggingHook(self, *inParams):
@@ -41,7 +41,7 @@ def ovmLogError(*inParams):
     ovmLogger.Inst().Log(syslog.LOG_ERR, *inParams)
 
 def ovmLogFailure(*inParams):
-    ovmLogger.Inst().LogFailure(*inParams)
+    ovmLogger.Inst().logFailure(*inParams)
 
 
 Language.SetErrorLoggingHook(ovmLogger.Inst().ErrorLoggingHook)

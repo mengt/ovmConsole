@@ -45,8 +45,8 @@ class ovmMenuLayout:
         
         inPane.AddWrappedTextField(Lang("Press <Enter> to configure the management network connection, and network time (NTP) settings."))
         inPane.NewLine()
-
-        if len(data.derived.managementpifs([])) == 0:
+        self.nic_dict, self.configured_nics, self.ntp_dhcp = data.get_system_nics()
+        if len(self.nic_dict) == 0:
             inPane.AddWrappedTextField(Lang("Currently, no management interface is configured."))
         else:
             inPane.AddTitleField(Lang("Current Management Interface"))
@@ -54,20 +54,17 @@ class ovmMenuLayout:
                 ntpState = 'Enabled'
             else:
                 ntpState = 'Disabled'
-            
-            for pif in data.derived.managementpifs([]):
-                inPane.AddStatusField(Lang('Device', 16), pif['device'])
-                inPane.AddStatusField(Lang('MAC Address', 16),  pif['MAC'])
-                inPane.AddStatusField(Lang('DHCP/Static IP', 16),  pif['ip_configuration_mode'])
-
-                inPane.AddStatusField(Lang('IP address', 16), data.ManagementIP(''))
-                inPane.AddStatusField(Lang('Netmask', 16),  data.ManagementNetmask(''))
-                inPane.AddStatusField(Lang('Gateway', 16),  data.ManagementGateway(''))
-                inPane.AddStatusField(Lang('Hostname', 16),  data.host.hostname(''))
+            for key in sorted(self.nic_dict.iterkeys()):
+                dev_interface,dev_bootproto,dev_vendor,dev_address,dev_driver,dev_conf_status,dev_bridge = self.nic_dict[key].split(",", 6)
+                inPane.AddStatusField(Lang('Device', 16), dev_interface)
+                inPane.AddStatusField(Lang('MAC Address', 16),  dev_address)
+                inPane.AddStatusField(Lang('DHCP/Static IP', 16),  dev_bootproto)
+                inPane.AddStatusField(Lang('IP address', 16), data.get_ip_address(dev_interface))
+                inPane.AddStatusField(Lang('Netmask', 16),  data.get_netmask(dev_interface))
+                inPane.AddStatusField(Lang('Gateway', 16),  data.get_gateway(dev_interface))
                 inPane.AddStatusField(Lang('NTP', 16),  ntpState)
+                inPane.AddWrappedTextField(Lang("---"))
 
-        inPane.AddKeyHelpField( { Lang("<F5>") : Lang("Refresh")})
-            
  
     def UpdateFieldsPOOL(self, inPane):
         data = Data.Inst()
