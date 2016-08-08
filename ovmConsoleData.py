@@ -239,11 +239,7 @@ class Data:
         if status == 0:
             self.ScanSysconfigNetwork(output.split("\n"))
     
-    def UpdateFromNTPConf(self):
-        (status, output) = commands.getstatusoutput("/bin/cat /etc/ntp.conf")
-        if status == 0:
-            self.ScanNTPConf(output.split("\n"))
-            
+
     def StringToBool(self, inString):
         return inString.lower().startswith('true')
 
@@ -279,20 +275,7 @@ class Data:
             if file is not None: file.close()
             self.UpdateFromSysconfig()
     
-    def SaveToNTPConf(self):
-        # Double-check authentication
-        Auth.Inst().AssertAuthenticated()
-        
-        file = None
-        try:
-            file = open("/etc/ntp.conf", "w")
-            for other in self.ntp.othercontents([]):
-                file.write(other+"\n")
-            for server in self.ntp.servers([]):
-                file.write("server "+server+"\n")
-        finally:
-            if file is not None: file.close()
-            self.UpdateFromNTPConf()
+
     
     def ScanDmiDecode(self, inLines):
         STATE_NEXT_ELEMENT = 2
@@ -470,20 +453,7 @@ class Data:
             else:
                 self.data['sysconfig']['network']['othercontents'].append(line)
     
-    def ScanNTPConf(self, inLines):
-        if not 'ntp' in self.data:
-            self.data['ntp'] = {}
-        
-        self.data['ntp']['servers'] = []
-        self.data['ntp']['othercontents'] = []
-        
-        for line in inLines:
-            match = re.match(r'server\s+(\S+)', line)
-            if match and not match.group(1).startswith('127.127.'):
-                self.data['ntp']['servers'].append(match.group(1))
-            else:
-                self.data['ntp']['othercontents'].append(line)
-                
+   
     def ScanCPUInfo(self, inLines):
         self.data['cpuinfo'] = {}
         for line in inLines:
@@ -642,27 +612,6 @@ class Data:
             return ''
         return output.split('=')[1]
 
-    
-    def EnableNTP(self):
-        status, output = commands.getstatusoutput(
-            "(export TERM=xterm && /sbin/chkconfig ntpd on && /etc/init.d/ntpd start)")
-        if status != 0:
-            raise Exception(output)
-        
-    def DisableNTP(self):
-        status, output = commands.getstatusoutput(
-            "(export TERM=xterm && /sbin/chkconfig ntpd off && /etc/init.d/ntpd stop)")
-        if status != 0:
-            raise Exception(output)
-
-    def RestartNTP(self):
-        status, output = commands.getstatusoutput("(export TERM=xterm && /etc/init.d/ntpd restart)")
-        if status != 0:
-            raise Exception(output)
-
-    def NTPStatus(self):
-        status, output = commands.getstatusoutput("/usr/bin/ntpstat")
-        return output
             
     def getStatusKVM(self):
         '''获得libvirt服务的状态'''
@@ -798,6 +747,40 @@ class Data:
     #     except Exception, e:
     #         raise e
 
+    def getStatusNTP(self):
+        '''获得NTP状态'''
+        try:
+            status, output = commands.getstatusoutput("/bin/systemctl status ntpd |grep active")
+            if status != 0 :
+                raise Exception(output)
+                return False
+            elif 'dead' in output:
+                return False
+            else:
+                return True
+        except Exception, e:
+            raise e
+            return False 
+
+    def setEnableNTP(self):
+        '''启动NTP'''
+        try:
+            (status, output) = commands.getstatusoutput("/bin/systemctl start  ntpd")
+            if status != 0:
+                (status, output) = commands.getstatusoutput("/bin/systemctl  ntpd on")
+        except Exception, e:
+            raise e
+
+    def setDisableNTP(self):
+        '''关闭NTP'''
+        try:
+            (status, output) = commands.getstatusoutput("/bin/systemctl stop  ntpd")
+            if status != 0:
+                (status, output) = commands.getstatusoutput("/bin/systemctl ntpd off")
+        except Exception, e:
+            raise e
+
+
 #测试ip,进行挂载
     def check_mount(self):
         '''检测是否已经挂载'''
@@ -873,7 +856,6 @@ class Data:
 
     def readntpconf(self,conf):
         # 获得NTP
-        #ntplist = self.readntpconf(r'/etc/ntp.conf')
         l = []
         f = file(conf,'r')
         for s in f:
@@ -881,6 +863,54 @@ class Data:
                 l.append(s.split(' ')[1][:-1])
         f.close()
         return l
+    def updateNtpConf(self,invalues):
+        #重新设置NTP
+        hostname1 = invalues['ntp1']
+        hostname2 = invalues['ntp2']
+        try:
+            if hostname1 != '' and hostname1 != ' ':
+                IPUtils.AssertValidNetworkName(hostname1)
+            if hostname2 != '' and hostname2 != ' ':
+                IPUtils.AssertValidNetworkName(hostname2)
+        except Exception, e:
+            return False
+        self.data['ntp']['servers'] = []
+        self.data['ntp']['servers'].append(hostname1)
+        self.data['ntp']['servers'].append(hostname2)
+        self.SaveToNTPConf()
+        return True
+
+    def UpdateFromNTPConf(self):
+        (status, output) = commands.getstatusoutput("/bin/cat /etc/ntp.conf")
+        if status == 0:
+            self.ScanNTPConf(output.split("\n"))
+            
+    def ScanNTPConf(self, inLines):
+        if not 'ntp' in self.data:
+            self.data['ntp'] = {}
+        
+        self.data['ntp']['servers'] = []
+        self.data['ntp']['othercontents'] = []
+        
+        for line in inLines:
+            match = re.match(r'server\s+(\S+)', line)
+            if match and not match.group(1).startswith('127.127.'):
+                self.data['ntp']['servers'].append(match.group(1))
+            else:
+                self.data['ntp']['othercontents'].append(line)
+
+    def SaveToNTPConf(self):
+        # Double-check authentication       
+        file = None
+        try:
+            file = open("/etc/ntp.conf", "w")
+            for other in self.ntp.othercontents([]):
+                file.write(other+"\n")
+            for server in self.ntp.servers([]):
+                file.write("server "+server+"\n")
+        finally:
+            if file is not None: file.close()
+            self.UpdateFromNTPConf() 
 
     def readdnsconf(self,conf):
         #获得DNS

@@ -145,6 +145,41 @@ class ovmFeatureNodeType:
     #     message = FirstValue(None, Lang("Do you want to Enable/Disable this Web Management?"))
     #     Layout.Inst().PushDialogue(QuestionDialogue(message, lambda x: cls.webMangerReplyHandler(x)))
 
+
+    @classmethod
+    def StatusUpdateHandlerNTP(cls, inPane):
+        if Data().Inst().getStatusNTP():
+            inPane.AddTitleField(Lang('NTP Is Enabled'))
+            inPane.AddWrappedTextField(Lang('Press <Enter> to Disable'))
+            inPane.AddKeyHelpField({Lang("F5") : Lang("Refresh")}) 
+        else:
+            inPane.AddTitleField(Lang('NTP Is Disable'))
+            inPane.AddWrappedTextField(Lang('Press <Enter> to Enable'))
+            inPane.AddKeyHelpField({Lang("F5") : Lang("Refresh")})   
+
+    @classmethod
+    def NTPReplyHandler(cls,  inYesNo):
+        if inYesNo == 'y':
+            if Data.Inst().getStatusNTP():
+                try:
+                    Layout.Inst().ExitBannerSet(Lang("Disable NTP..."))
+                    Data().Inst().setDisableNTP()
+                    ovmLog('NTP Disable')
+                except Exception, e:
+                    Layout.Inst().PushDialogue(InfoDialogue(Lang("NTP Disable Failed"), Lang(e)))
+            else:
+                try:
+                    Layout.Inst().ExitBannerSet(Lang("Enable NTP..."))
+                    Data().Inst().setEnableNTP()
+                    ovmLog('NTP Enable')
+                except Exception, e:
+                    Layout.Inst().PushDialogue(InfoDialogue(Lang("NTP Enable Failed"), Lang(e)))
+
+    @classmethod
+    def activatehandlerNTP(cls,*inParams):
+        message = FirstValue(None, Lang("Do you want to Enable/Disable this NTP?"))
+        Layout.Inst().PushDialogue(QuestionDialogue(message, lambda x: cls.NTPReplyHandler(x)))
+
     def Register(self):
         
         Importer.RegisterNamedPlugIn(
@@ -199,5 +234,17 @@ class ovmFeatureNodeType:
         #     }
         # )
 
+        Importer.RegisterNamedPlugIn(
+            self,
+            'S_NTP', # Key of this plugin for replacement, etc.
+            {
+                #'title' : Lang('Enable/disable Docker Repertory'), # Name of this plugin for plugin list
+                'menuname' : 'MENU_NODETYPE',
+                'menupriority' : 400,
+                'menutext' : Lang('Enable/disable NTP') ,
+                'statusupdatehandler' : self.StatusUpdateHandlerNTP,
+                'activatehandler' : self.activatehandlerNTP
+            }
+        )
 # Register this plugin when module is imported
 ovmFeatureNodeType().Register()

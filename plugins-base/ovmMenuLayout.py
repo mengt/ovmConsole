@@ -56,13 +56,17 @@ class ovmMenuLayout:
                 ntpState = 'Disabled'
             for key in sorted(self.nic_dict.iterkeys()):
                 dev_interface,dev_bootproto,dev_vendor,dev_address,dev_driver,dev_conf_status,dev_bridge = self.nic_dict[key].split(",", 6)
-                inPane.AddStatusField(Lang('Device', 16), dev_interface)
-                inPane.AddStatusField(Lang('MAC Address', 16),  dev_address)
-                inPane.AddStatusField(Lang('DHCP/Static IP', 16),  dev_bootproto)
-                inPane.AddStatusField(Lang('IP address', 16), data.get_ip_address(dev_interface))
-                inPane.AddStatusField(Lang('Netmask', 16),  data.get_netmask(dev_interface))
-                inPane.AddStatusField(Lang('Gateway', 16),  data.get_gateway(dev_interface))
-                inPane.AddStatusField(Lang('NTP', 16),  ntpState)
+                if data.get_dev_status(dev_interface) != '(No connected)':
+                    inPane.AddStatusField(Lang('Device', 16), dev_interface)
+                    inPane.AddStatusField(Lang('MAC Address', 16),  dev_address)
+                    inPane.AddStatusField(Lang('DHCP/Static IP', 16),  dev_bootproto)
+                    inPane.AddStatusField(Lang('IP address', 16), data.get_ip_address(dev_interface))
+                    inPane.AddStatusField(Lang('Netmask', 16),  data.get_netmask(dev_interface))
+                    inPane.AddStatusField(Lang('Gateway', 16),  data.get_gateway(dev_interface))
+                    inPane.AddStatusField(Lang('NTP', 16),  ntpState)
+                else:
+                    inPane.AddStatusField(Lang('Device', 16), dev_interface)
+                    inPane.AddStatusField(Lang('Status', 16),  '(No connected)')
                 inPane.AddWrappedTextField(Lang("---"))
 
  
