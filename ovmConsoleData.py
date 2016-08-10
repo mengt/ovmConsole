@@ -538,8 +538,49 @@ class Data:
         return retVal
     
     def ReconfigureManagement(self, inPIF, inMode,  inIP,  inNetmask,  inGateway, inDNS = None):
-        pass
+        #cmd = '#%s#%s#%s#%s#%s#%s#' % (inPIF, inMode,  inIP,  inNetmask,  inGateway, inDNS)
+        #ovmLog(cmd)
+        nic_path =  '/etc/sysconfig/network-scripts/ifcfg-'+inPIF
+        open_ifcfg = None
+        try:
+            (status,output) = commands.getstatusoutput('/usr/bin/cat '+nic_path)
+            if status != 0:
+                raise(Exception, "Not NIC!")
+            output = output.split('\n')
+            open_ifcfg = open(nic_path,'w')
+            
+            for i in output:
+                if i.startswith('ONBOOT'):
+                    open_ifcfg.write('ONBOOT="yes"\n')
+                elif i.startswith('BOOTPROTO'):
+                    pass
+                elif i.startswith('IPADDR'):
+                    pass
+                elif i.startswith('PREFIX') or i.startswith('NETMASK'):
+                    pass
+                elif i.startswith('GATEWAY'):
+                    pass
+                elif i.startswith('DNS'):
+                    pass
+                else:
+                    open_ifcfg.write(i+'\n')
+            if inMode.lower() == 'dhcp':
+                open_ifcfg.write('BOOTPROTO=%s\n' % inMode.lower())
+            else:
+                open_ifcfg.write('BOOTPROTO=%s\n' % inMode.lower())
+                open_ifcfg.write('IPADDR="%s"\n' % inIP)
+                open_ifcfg.write('NETMASK="%s"\n' % inNetmask)
+                open_ifcfg.write('GATEWAY="%s"\n' % inGateway)
+                if inDNS != '':
+                    open_ifcfg.write('DNS1="%s"\n' % inDNS)
 
+            (status,output) = commands.getstatusoutput('service network restart')
+            if status != 0:
+                raise Exception(output)
+        except Exception, e:
+            raise e
+        finally:
+            open_ifcfg.close()
     
     def DisableManagement(self):
         pass
@@ -611,6 +652,7 @@ class Data:
         if status != 0 :
             return ''
         return output.split('=')[1]
+
 
             
     def getStatusKVM(self):
@@ -1020,11 +1062,19 @@ class Data:
         return netmask
 
     def get_gateway(self,ifname):
-        cmd = "/usr/bin/cat /etc/sysconfig/network-scripts/ifcfg-"+ifname+" |grep GATEWAY0"
+        cmd = "ip route list dev "+ ifname + " | awk ' /^default/ {print $3}'"
+        (status, output) = commands.getstatusoutput(cmd)
+        if status == 0 and output != '':
+            return output       
+        cmd = "/usr/bin/cat /etc/sysconfig/network-scripts/ifcfg-"+ifname+" |grep GATEWAY"
         (status, output) = commands.getstatusoutput(cmd)
         if status != 0 :
             return ''
-        return output.split('=')[1]
+        gy = re.search(r'\d+.\d+.\d+.\d',output.split('=')[1])
+        if gy is not None:
+            return gy.group()
+        else:
+            return ''
     
     def get_dev_status(self,ifname):
         cmd = "ip addr |grep "+ifname

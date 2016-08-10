@@ -14,20 +14,19 @@ class InterfaceDialogue(Dialogue):
         self.nic=None
         self.converting = False
         self.currentPIF = {}
-        choiceArray = []
+        self.choiceArray = []
         nic_dict, configured_nics, ntp_dhcp = data.get_system_nics()
         for key in sorted(nic_dict.iterkeys()):
             dev_interface,dev_bootproto,dev_vendor,dev_address,dev_driver,dev_conf_status,dev_bridge = nic_dict[key].split(",", 6)
-            self.currentPIF[dev_interface]={'ip_configuration_mode':dev_bootproto,'IP':data.get_ip_address(dev_interface),'netmask':data.get_netmask(dev_interface),'gateway':data.get_gateway(dev_interface)}
+            self.currentPIF[dev_interface]={'ip_configuration_mode':dev_bootproto,'dev_address':dev_address,'IP':data.get_ip_address(dev_interface),'netmask':data.get_netmask(dev_interface),'gateway':data.get_gateway(dev_interface)}
             choiceName = dev_interface +": "+dev_vendor+" "
 
             if data.get_dev_status(dev_interface) != '(No connected)':
                 choiceName += '('+Lang("connected")+')'
             else:
                 choiceName += '('+Lang("not connected")+')'
-
+            self.choiceArray.append(dev_interface)
             choiceDefs.append(ChoiceDef(choiceName, lambda: self.HandleNICChoice(self.nicMenu.ChoiceIndex())))
-            
 
         if len(choiceDefs) == 0:
             ovmLog('Configure Management Interface found no device to present')
@@ -78,7 +77,7 @@ class InterfaceDialogue(Dialogue):
         pane = self.Pane()
         pane.ResetFields()
         
-        pane.AddTitleField(Lang("Select NIC for Management Interface"))
+        pane.AddTitleField(Lang("Select NIC for Interface"))
         pane.AddMenuField(self.nicMenu)
         pane.AddKeyHelpField( { Lang("<Enter>") : Lang("OK"), Lang("<Esc>") : Lang("Cancel") } )
 
@@ -97,9 +96,9 @@ class InterfaceDialogue(Dialogue):
             pane.AddTitleField(Lang("Please confirm or edit the static IP configuration"))
         else:
             pane.AddTitleField(Lang("Enter static IP address configuration"))
-        pane.AddInputField(Lang("IP Address",  14),  self.currentPIF['eth'+str(self.nic)]['IP'], 'IP')
-        pane.AddInputField(Lang("Netmask",  14),  self.currentPIF['eth'+str(self.nic)]['netmask'], 'netmask')
-        pane.AddInputField(Lang("Gateway",  14),  self.currentPIF['eth'+str(self.nic)]['gateway'], 'gateway')
+        pane.AddInputField(Lang("IP Address",  14),  self.currentPIF[self.choiceArray[self.nic]]['IP'], 'IP')
+        pane.AddInputField(Lang("Netmask",  14),  self.currentPIF[self.choiceArray[self.nic]]['netmask'], 'netmask')
+        pane.AddInputField(Lang("Gateway",  14),  self.currentPIF[self.choiceArray[self.nic]]['gateway'], 'gateway')
         pane.AddKeyHelpField( { Lang("<Enter>") : Lang("OK"), Lang("<Esc>") : Lang("Cancel") } )
         if pane.InputIndex() is None:
             pane.InputIndexSet(0) # Activate first field for input
@@ -114,13 +113,16 @@ class InterfaceDialogue(Dialogue):
             pane.AddWrappedTextField(Lang("The Management Interface will be disabled"))
         else:
             #pif = Data.Inst().host.PIFs()[self.nic]
-            pane.AddStatusField(Lang("Device",  16),  self.nic)
-            pane.AddStatusField(Lang("Name",  16),  "pif['metrics']['device_name']")
+            pane.AddStatusField(Lang("Device",  16),  self.choiceArray[self.nic])
+            pane.AddStatusField(Lang("MAC",  16),  self.currentPIF[self.choiceArray[self.nic]]['dev_address'])
             pane.AddStatusField(Lang("IP Mode",  16),  self.mode)
             if self.mode == 'Static':
-                pane.AddStatusField(Lang("IP Address",  16),  self.currentPIF['eth'+str(self.nic)]['IP'])
-                pane.AddStatusField(Lang("Netmask",  16),  self.currentPIF['eth'+str(self.nic)]['netmask'])
-                pane.AddStatusField(Lang("Gateway",  16),  self.currentPIF['eth'+str(self.nic)]['gateway'])
+                # pane.AddStatusField(Lang("IP Address",  16),  self.currentPIF['eth'+str(self.nic)]['IP'])
+                # pane.AddStatusField(Lang("Netmask",  16),  self.currentPIF['eth'+str(self.nic)]['netmask'])
+                # pane.AddStatusField(Lang("Gateway",  16),  self.currentPIF['eth'+str(self.nic)]['gateway'])
+                pane.AddStatusField(Lang("IP Address",  16),  self.IP)
+                pane.AddStatusField(Lang("Netmask",  16),  self.netmask)
+                pane.AddStatusField(Lang("Gateway",  16),  self.gateway)
                       
         pane.AddKeyHelpField( { Lang("<Enter>") : Lang("OK"), Lang("<Esc>") : Lang("Cancel") } )
         
@@ -135,11 +137,14 @@ class InterfaceDialogue(Dialogue):
             pane.AddWrappedTextField(Lang("<No interface configured>"))
         else:
             pif = Data.Inst().host.PIFs()[self.nic]
-            pane.AddStatusField(Lang("Device",  16),  pif['device'])
-            pane.AddStatusField(Lang("Name",  16),  pif['metrics']['device_name'])
-            pane.AddStatusField(Lang("IP Address",  16),  self.currentPIF['eth'+str(self.nic)]['IP'])
-            pane.AddStatusField(Lang("Netmask",  16),  self.currentPIF['eth'+str(self.nic)]['netmask'])
-            pane.AddStatusField(Lang("Gateway",  16),  self.currentPIF['eth'+str(self.nic)]['gateway'])
+            pane.AddStatusField(Lang("Device",  16),  self.choiceArray[self.nic])
+            pane.AddStatusField(Lang("MAC",  16),  self.currentPIF[self.choiceArray[self.nic]]['dev_address'])
+            # pane.AddStatusField(Lang("IP Address",  16),  self.currentPIF['eth'+str(self.nic)]['IP'])
+            # pane.AddStatusField(Lang("Netmask",  16),  self.currentPIF['eth'+str(self.nic)]['netmask'])
+            # pane.AddStatusField(Lang("Gateway",  16),  self.currentPIF['eth'+str(self.nic)]['gateway'])
+            pane.AddStatusField(Lang("IP Address",  16),  self.IP)
+            pane.AddStatusField(Lang("Netmask",  16),  self.netmask)
+            pane.AddStatusField(Lang("Gateway",  16),  self.gateway)
         pane.NewLine()
         pane.AddMenuField(self.postDHCPMenu)
         pane.AddKeyHelpField( { Lang("<Enter>") : Lang("OK"), Lang("<Esc>") : Lang("Cancel") } )
@@ -157,13 +162,18 @@ class InterfaceDialogue(Dialogue):
     def HandleKeyINITIAL(self, inKey):
         return self.nicMenu.HandleKey(inKey)
 
+    def UpdateFieldsPOSTHOSTNAME(self):
+        pass
+
     def HandleKeyMODE(self, inKey):
         return self.modeMenu.HandleKey(inKey)
 
     def HandleKeySTATICIP(self, inKey):
+        '''静态IP'''
         handled = True
         pane = self.Pane()
         if inKey == 'KEY_ENTER':
+            #ovmLog('HandleKeySTATICIP')
             if pane.IsLastInput():
                 inputValues = pane.GetFieldValues()
                 self.IP = inputValues['IP']
@@ -177,7 +187,7 @@ class InterfaceDialogue(Dialogue):
                     IPUtils.AssertValidNetmask(self.netmask)
                     failedName = Lang('Gateway')
                     IPUtils.AssertValidIP(self.gateway)
-                    failedName = Lang('Hostname')
+                    #failedName = Lang('Hostname')
                     #IPUtils.AssertValidNetworkName(self.hostname)
                     self.ChangeState('PRECOMMIT')
                 except:
@@ -198,26 +208,28 @@ class InterfaceDialogue(Dialogue):
 
 
     def HandleKeyPRECOMMIT(self, inKey):
+        '''DHCP adn Commit'''
         handled = True
         pane = self.Pane()
         if inKey == 'KEY_ENTER':
+            #ovmLog('HandleKeyPRECOMMIT')
             Layout.Inst().TransientBanner( Lang("Reconfiguring network..."))
             try:
                 self.Commit()
                 if self.mode == 'DHCP':
                     data = Data.Inst()
-                    self.IP = data.ManagementIP()
-                    self.netmask = data.ManagementNetmask()
-                    self.gateway = data.ManagementGateway()
+                    #ovmLog(self.nic)
+                    self.IP = data.get_ip_address(self.choiceArray[self.nic])
+                    self.netmask = data.get_netmask(self.choiceArray[self.nic])
+                    self.gateway = data.get_gateway(self.choiceArray[self.nic])
                     self.ChangeState('POSTDHCP')
-                elif self.nic != None:
-                    # Not disabling, so show post-hostname dialogue
-                    self.ChangeState('POSTHOSTNAME')
+                    self.Complete()
                 else:
                     self.Complete() # Disabled management interface
                 
             except Exception, e:
-                self.Complete(Lang("Configuration Failed: "+Lang(e)))
+                #ovmLog(e)
+                Layout.Inst().PushDialogue(InfoDialogue(Lang(e)))
                 
         else:
             handled = False
@@ -286,15 +298,6 @@ class InterfaceDialogue(Dialogue):
             self.mode = 'Static'
             self.ChangeState('STATICIP')
 
-    def HandlePostHostnameChoice(self,  inChoice):
-        data = Data.Inst()
-        if inChoice == 'COPY':
-            #data.NameLabelSet(data.host.hostname(''))
-            self.Complete() # We're done
-        elif inChoice == 'KEEP':
-            self.Complete() # We're done
-        elif inChoice == 'NEW':
-            self.ChangeState('NAMELABEL')
 
     def HandleRenewChoice(self):
         data = Data.Inst()
@@ -320,30 +323,21 @@ class InterfaceDialogue(Dialogue):
             Layout.Inst().PushDialogue(InfoDialogue(Lang("Renewal Failed"), Lang(e)))
             
     def Commit(self):
+        '''提交'''
         data = Data.Inst()
         if self.nic is None:
             self.mode = None
             data.DisableManagement()
         else:
-            pif = data.host.PIFs()[self.nic]
+            pif = self.choiceArray[self.nic]
             if self.mode.lower().startswith('static'):
                 # Comma-separated list of nameserver IPs
                 dns = ','.join(data.dns.nameservers([]))
             else:
                 dns = ''
                 
-            # Operation of the dhclient-script is:
-            # If the current hostname from bin/hostname is '(none)', 'localhost' or 'localhost.localdomain',
-            # get the hostname from DHCP, otherwise keep the current hostname.  So we set the hostname
-            # here to control the action of DHCP when ReconfigureManagement runs
-            # if self.hostname == '':
-            #      # DHCP will override if the DHCP server offers a hostname, otherwise we'll keep this one
-            #     data.HostnameSet('localhost')
-            # else:                
-            #     data.HostnameSet(self.hostname)
             data.ReconfigureManagement(pif, self.mode, self.IP,  self.netmask, self.gateway, dns)
         data.Update()
-        #self.hostname = data.host.hostname('') # Hostname may have changed.  Must be after data.Update()
 
     def Complete(self, inMessage = None):
         Layout.Inst().PopDialogue()

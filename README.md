@@ -1,3 +1,9 @@
-# ovmConsole
-#this is ovm console UI
-2016.7.26 update menu and test succeed
+#!/usr/bin/env python
+#-*-coding:utf-8-*-  
+
+yum install python-gudev
+easy_install cracklib
+
+将ovm-admin目录复制到/usr/libexec目录下，
+
+python /usr/libexec/ovmConsole/ovmConsole.py
