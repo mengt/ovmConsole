@@ -614,16 +614,26 @@ class ovmFeatureNTP:
     @classmethod
     def StatusUpdateHandler(cls, inPane):
         data = Data().Inst()
-        inPane.AddTitleField(Lang('Server NTP'))
-        for i in data.data['ntp']['servers']:
-            inPane.AddWrappedTextField(Lang(i))
-        inPane.NewLine()
-        inPane.AddWrappedTextField(Lang('Add an NTP Server,Can specify up to two.'))
-        inPane.AddKeyHelpField({Lang("F5") : Lang("Refresh")})   
+        if data.getStatusNTP():
+            inPane.AddTitleField(Lang('Server NTP'))
+            for i in data.data['ntp']['servers']:
+                inPane.AddWrappedTextField(Lang(i))
+            inPane.NewLine()
+            inPane.AddWrappedTextField(Lang('Add an NTP Server,Can specify up to two.'))
+            inPane.AddKeyHelpField({Lang("F5") : Lang("Refresh")}) 
+        else:
+            inPane.AddTitleField(Lang('NTP Is Disable'))
+            inPane.AddWrappedTextField(Lang('Please open the server in the "Set Node Type" option'))
+            inPane.AddKeyHelpField({Lang("F5") : Lang("Refresh")})  
+   
         
     @classmethod
     def ActivateHandler(cls):
-        Layout.Inst().PushDialogue(NTPInputDialogue())
+        data = Data().Inst()
+        if data.getStatusNTP():
+            Layout.Inst().PushDialogue(NTPInputDialogue())
+        else:
+            pass
         #DialogueUtils.AuthenticatedOnly(lambda: Layout.Inst().PushDialogue(NTPDialogue()))
 
     def Register(self):

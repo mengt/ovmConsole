@@ -15,7 +15,7 @@ start(){
 		echo "docker-registry is running"
 	else
 		echo "docker-registry is starting"
-		nohup gunicorn --access-logfile /var/log/docker-registry/access.log --error-logfile /var/log/docker-registry/server.log -k gevent --max-requests 100 --graceful-timeout 3600 -t 3600 -b 0.0.0.0:5000 -w 1 docker_registry.wsgi:application -p /var/run/docker-registry.pid 2>dev/null &
+		nohup gunicorn --access-logfile /var/log/docker-registry/access.log --error-logfile /var/log/docker-registry/server.log -k gevent --max-requests 100 --graceful-timeout 3600 -t 3600 -b 0.0.0.0:5000 -w 1 docker_registry.wsgi:application -p /var/run/docker-registry.pid 2>/dev/null &
 		touch /var/lock/subsys/docker-registry
 		sleep 1
 		echo "docker-registry start OK."
