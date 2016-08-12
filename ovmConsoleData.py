@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #-*-coding:utf-8-*-
 
-import commands, re, shutil, sys, tempfile, socket, ConfigParser, os, gudev, fcntl
+import commands, re, shutil, sys, tempfile, socket, ConfigParser, os, gudev, fcntl, subprocess
 from pprint import pprint
 from simpleconfig import SimpleConfigFile
 import struct as STRUCT
@@ -560,8 +560,8 @@ class Data:
                     pass
                 elif i.startswith('GATEWAY'):
                     pass
-                elif i.startswith('DNS'):
-                    pass
+                # elif i.startswith('DNS'):
+                #     pass
                 else:
                     open_ifcfg.write(i+'\n')
             if inMode.lower() == 'dhcp':
@@ -571,16 +571,17 @@ class Data:
                 open_ifcfg.write('IPADDR="%s"\n' % inIP)
                 open_ifcfg.write('NETMASK="%s"\n' % inNetmask)
                 open_ifcfg.write('GATEWAY="%s"\n' % inGateway)
-                if inDNS != '':
-                    open_ifcfg.write('DNS1="%s"\n' % inDNS)
-
-            (status,output) = commands.getstatusoutput('service network restart')
-            if status != 0:
-                raise Exception(output)
+                # if inDNS != '' and inDNS != '0.0.0.0':
+                #     open_ifcfg.write('DNS1="%s"\n' % inDNS)
         except Exception, e:
             raise e
         finally:
             open_ifcfg.close()
+        try:
+            #(status,output) = commands.getstatusoutput('service network restart')
+            ovmLog(subprocess.check_output(". /usr/libexec/ovmConsole/reboot-network",shell=True))
+        except Exception, e:
+            raise e    
     
     def DisableManagement(self):
         pass
