@@ -225,7 +225,8 @@ class InterfaceDialogue(Dialogue):
                     self.ChangeState('POSTDHCP')
                     self.Complete()
                 else:
-                    self.Complete() # Disabled management interface
+                    #Layout.Inst().PopDialogue()
+                    Layout.Inst().PushDialogue(InfoDialogue(Lang("Network Configuration Successful")))
                 
             except Exception, e:
                 #ovmLog(e)
@@ -332,7 +333,7 @@ class InterfaceDialogue(Dialogue):
             pif = self.choiceArray[self.nic]
             if self.mode.lower().startswith('static'):
                 # Comma-separated list of nameserver IPs
-                dns = ','.join(data.dns.nameservers([]))
+                dns = data.dns.nameservers([])
             else:
                 dns = ''
                 
@@ -532,7 +533,7 @@ class ovmFeatureDNS:
             inPane.AddWrappedTextField(Lang("<No nameservers are configured>"))
         for dns in dnslist:
             inPane.AddWrappedTextField(str(dns))
-        inPane.NewLine()
+            inPane.NewLine()
         inPane.AddKeyHelpField( {
             Lang("<F5>") : Lang("Refresh")
         })

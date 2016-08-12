@@ -1,0 +1,5 @@
+#!/bin/bash
+#/usr/bin/systemctl stop firewalld > /var/log/messages
+/usr/bin/systemctl stop network.service > /var/log/messages
+/usr/bin/systemctl start network.service > /var/log/messages
+#/usr/bin/systemctl start firewalld > /var/log/messages
