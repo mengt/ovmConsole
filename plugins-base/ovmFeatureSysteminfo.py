@@ -48,16 +48,16 @@ class ovmFeatureSystemInfo:
 
         inPane.AddTitleField(Lang("Processor Details"))
         
-        inPane.AddStatusField(Lang("Logical CPUs", 27), str(len(data.host.host_CPUs([]))))
+        inPane.AddStatusField(Lang("Logical CPUs", 27), str(len(data.host.host_CPUs())))
         inPane.AddStatusField(Lang("Populated CPU Sockets", 27), str(data.dmi.cpu_populated_sockets()))
         inPane.AddStatusField(Lang("Total CPU Sockets", 27), str(data.dmi.cpu_sockets()))
 
         inPane.NewLine()
         inPane.AddTitleField(Lang("Description"))
         
-        for name, value in data.derived.cpu_name_summary().iteritems():
+        for name, value in data.host.host_CPUs().iteritems():
             # Use DMI number for populated sockets, not xapi-reported number of logical cores 
-            inPane.AddWrappedTextField(str(data.dmi.cpu_populated_sockets())+" x "+name)
+            inPane.AddWrappedTextField(str(name)+" x "+value)
             
             # inPane.AddWrappedTextField(str(value)+" x "+name) # Alternative - number of logical cores
     
