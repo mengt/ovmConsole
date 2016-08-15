@@ -155,7 +155,6 @@ class Data:
                 self.session = None
             except Exception, e:
                 ovmLogError('Data update failed: ', e)
-
         self.UpdateFromResolveConf()
         self.UpdateFromSysconfig()
         self.UpdateFromNTPConf()
@@ -177,19 +176,12 @@ class Data:
             }
         })
         
-        # Gather up the CPU model names into a more convenient form
-        if 'host_CPUs' in self.data['host']:
-            hostCPUs = self.data['host']['host_CPUs']
-    
-            cpuNameSummary = self.data['derived']['cpu_name_summary']
-            
-            for cpu in hostCPUs:
-                name = " ".join(cpu['modelname'].split())
-                if name in cpuNameSummary:
-                    cpuNameSummary[name] += 1
-                else:
-                    cpuNameSummary[name] = 1        
-        
+        self.data['host']['host_CPUs'] = {}
+        (status, output) = commands.getstatusoutput("cat /proc/cpuinfo |grep 'physical id'|sort |uniq|wc -l")
+        (status2, output2) = commands.getstatusoutput("cat /proc/cpuinfo | grep name | cut -f2 -d:")
+        if status == 0 and status2 == 0:
+            for i in range(int(output)):
+                self.data['host']['host_CPUs'][i]=output2.split('\n')[i].strip()
         self.data['derived']['managementpifs'] = []
 
         # Calculate the full version string
@@ -869,7 +861,7 @@ class Data:
         if os.path.exists(self.dockerConfig):
             with open(self.dockerConfig,"r") as df:
                 for line in df:
-                    if "INSECURE_REGISTRY='--insecure-registry" in line and "#INSECURE_REGISTRY='--insecure-registry" not in line:
+                    if "INSECURE_REGISTRY='--insecure-registry" in line and "# INSECURE_REGISTRY='--insecure-registry" not in line:
                         self.docker_registryURl = line.split(' ')[-1].split("'")[0]
                         return True
         return False
