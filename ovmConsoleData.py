@@ -643,7 +643,15 @@ class Data:
         cmd = "/usr/bin/cat /etc/sysconfig/network |grep GATEWAY"
         (status, output) = commands.getstatusoutput(cmd)
         if status != 0 :
-            return ''
+            (status, output) = commands.getstatusoutput("route | awk ' {print $2}'")
+            if status == 0:
+                for i in output.split('\n'):
+                    rc = re.match(r'\d+.\d+.\d+.\d',  i)
+                    if rc:
+                        return rc.group()
+                        break
+            else:
+                return ''
         return output.split('=')[1]
 
 
