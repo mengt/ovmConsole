@@ -412,7 +412,7 @@ class TestNetworkDialogue(Dialogue):
         
         self.testMenu = Menu(self, None, Lang("Select Test Type"), [
             ChoiceDef(Lang("Ping local address 127.0.0.1"), lambda: self.HandleTestChoice('local') ), 
-            #if Data.Inst().ManagementGateway() != '':
+            #if self.HandleTestChoice('gateway') != '':
             ChoiceDef(Lang("Ping gateway address")+" ("+gatewayName+")", lambda: self.HandleTestChoice('gateway') ), 
             ChoiceDef(Lang("Ping www.kernel.org"), lambda: self.HandleTestChoice('fixedserver') ), 
             ChoiceDef(Lang("Ping custom address"), lambda: self.HandleTestChoice('custom') ), 
