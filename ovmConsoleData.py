@@ -571,10 +571,73 @@ class Data:
             open_ifcfg.close()
         try:
             #(status,output) = commands.getstatusoutput('service network restart')
-            ovmLog(subprocess.check_output(". /usr/libexec/ovmConsole/reboot-network",shell=True))
+            ovmLog(subprocess.check_output(". /usr/libexec/ovm-admin/reboot-network",shell=True))
         except Exception, e:
-            raise e    
-    
+            raise e 
+
+    def checkNIC(self,inPIF):
+        nic_path =  '/etc/sysconfig/network-scripts/ifcfg-'+inPIF
+        Ninfo = {'device': None, 'type': None , 'bridge' : None}
+        if os.path.exists(nic_path):
+            (status,output) = commands.getstatusoutput('/usr/bin/cat '+nic_path)
+            nicinfo = output.split('\n')
+            for i in nicinfo:
+                if i.startswith('DEVICE='):
+                    Ninfo['device'] = i.split('=')[-1]
+                elif i.startswith('TYPE='):
+                    Ninfo['type'] = i.split('=')[-1]
+                elif i.startswith('OVS_BRIDGE=') or i.startswith('BRIDGE='):
+                    Ninfo['bridge'] = i.split('=')[-1]
+                else:
+                    pass
+            return (True,Ninfo)
+        else:
+            return (False,None)
+
+    def DoConfigureBridge(self,inNic,inbr):
+        #根据输入的nic判断是否已经设置网桥，如果没有就设置一个网桥
+        # cmd = '#%s#%s#' % (inNic,inbr)
+        # ovmLog(cmd)
+        Nstatus,Ninfo = self.checkNIC(inNic) 
+        if Nstatus == True and Ninfo['type'] != 'Bridge' and Ninfo['type'] != 'OVSBridge' and Ninfo['type'] != 'OVSPort':
+            nic_path =  '/etc/sysconfig/network-scripts/ifcfg-'+inNic
+            open_ifcfg = []
+            device = ''
+            open_ifcfg_bak = []
+            (status,output) = commands.getstatusoutput('/usr/bin/cat '+nic_path)
+            output = output.split('\n')
+            for i in output:
+                if i.startswith('DEVICE='):
+                    device = i+'\n'
+                elif i.startswith('BOOTPROTO=') or i.startswith('IPADDR=') or i.startswith('NETMASK=') or i.startswith('GATEWAY=') or i.startswith('DNS'):
+                    open_ifcfg.append(i+'\n')
+                else:
+                    open_ifcfg_bak.append(i+'\n')
+            try:
+                nic_f= open(nic_path,'w')
+                new_ifcfg = ['ONBOOT=yes\n','DEVICETYPE=ovs\n','TYPE=OVSPort\n','OVS_BRIDGE='+inbr+'\n','BOOTPROTO=none\n','HOTPLUG=no']
+                nic_f.writelines(device)
+                nic_f.writelines(new_ifcfg)
+                nic_f.close()
+                br_path = '/etc/sysconfig/network-scripts/ifcfg-'+inbr
+                br_f = open(br_path,'w')
+                br_f.writelines(['DEVICE='+inbr+'\n','ONBOOT=yes\n','DEVICETYPE=ovs\n','TYPE=OVSBridge\n','HOTPLUG=no\n'])
+                br_f.writelines(open_ifcfg)
+                br_f.close()
+                (status,output) = commands.getstatusoutput('/usr/bin/ovs-vsctl add-br '+ inbr)
+                ovmLog(subprocess.check_output(". /usr/libexec/ovm-admin/reboot-network",shell=True))
+                return (True,'Configure ovs bridge successful')
+            except Exception, e:
+                nic_b= open(nic_path,'w')
+                nic_b.writelines(device)
+                nic_b.writelines(open_ifcfg_bak)
+                nic_b.writelines(open_ifcfg)
+                nic_b.close()
+                ovmLog(subprocess.check_output(". /usr/libexec/ovm-admin/reboot-network",shell=True))
+                return (False,'Configured failed')
+        else:  
+            return (False,'No NIC or the NIC has been set up ')
+
     def DisableManagement(self):
         pass
     

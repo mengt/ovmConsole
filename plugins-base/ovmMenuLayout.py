@@ -56,7 +56,7 @@ class ovmMenuLayout:
                 ntpState = 'Disabled'
             for key in sorted(self.nic_dict.iterkeys()):
                 dev_interface,dev_bootproto,dev_vendor,dev_address,dev_driver,dev_conf_status,dev_bridge = self.nic_dict[key].split(",", 6)
-                if data.get_dev_status(dev_interface) != '(No connected)':
+                if data.get_dev_status(dev_interface) != '(No connected)' or dev_interface  in ['br0','br1','br2','br3','br4']:
                     inPane.AddStatusField(Lang('Device', 16), dev_interface)
                     inPane.AddStatusField(Lang('MAC Address', 16),  dev_address)
                     inPane.AddStatusField(Lang('DHCP/Static IP', 16),  dev_bootproto)
