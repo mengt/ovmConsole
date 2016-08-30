@@ -357,7 +357,7 @@ class ovmFeatureNetworkInfo:
         else:
             for key in sorted(nic_dict.iterkeys()):
                 dev_interface,dev_bootproto,dev_vendor,dev_address,dev_driver,dev_conf_status,dev_bridge = nic_dict[key].split(",", 6)
-                if data.get_dev_status(dev_interface) != '(No connected)':
+                if data.get_dev_status(dev_interface) != '(No connected)' or dev_interface  in ['br0','br1','br2','br3','br4']:
                     inPane.AddStatusField(Lang('Device', 16), dev_interface)
                     inPane.AddStatusField(Lang('MAC Address', 16),  dev_address)
                     inPane.AddStatusField(Lang('DHCP/Static IP', 16),  dev_bootproto)
@@ -397,6 +397,170 @@ class ovmFeatureNetworkInfo:
         )
 
 #network info end
+
+###
+
+
+class BridgeDialogue(Dialogue): 
+    def __init__(self):
+        Dialogue.__init__(self)
+        data = Data.Inst()
+        pane = self.NewPane(DialoguePane(self.parent))
+        pane.TitleSet(Lang("Configuration Bridge"))
+        pane.AddBox()
+        nic_dict, configured_nics, ntp_dhcp = data.get_system_nics()
+        self.choiceArray = []
+        for key in sorted(nic_dict.iterkeys()):
+            dev_interface,dev_bootproto,dev_vendor,dev_address,dev_driver,dev_conf_status,dev_bridge = nic_dict[key].split(",", 6)
+            #1、网卡必须是链接状态
+            #2、网卡必须没有设置桥接
+            #3、网卡必须制造商和设备号来确实是物理网卡
+            if data.get_dev_status(dev_interface) != '(No connected)' and dev_vendor.strip() != 'unknown':
+                choiceName = dev_interface +": "+dev_vendor+" "
+                choiceName += '('+Lang("connected")+')'
+                nic = dev_interface
+                self.choiceArray.append(ChoiceDef(Lang(choiceName), lambda: self.HandleTestChoice(nic)))
+            else:
+                pass
+        if len(self.choiceArray) <= 0:
+            self.choiceArray.append(ChoiceDef(Lang("No available nic"), lambda: self.HandleTestChoice('None') ))
+        self.testMenu = Menu(self, None, Lang("Select NIC"), self.choiceArray)
+    
+        
+        self.state = 'INITIAL'
+        self.inChoice = None
+        self.UpdateFields()
+
+
+    def UpdateFields(self):
+        self.Pane().ResetPosition()
+        getattr(self, 'UpdateFields'+self.state)() # Despatch method named 'UpdateFields'+self.state
+        
+        
+    def UpdateFieldsINITIAL(self):
+        pane = self.Pane()
+        pane.ResetFields()
+        
+        pane.AddTitleField(Lang("Selection the NIC set to bridge"))
+        pane.AddMenuField(self.testMenu)
+        pane.AddKeyHelpField( { Lang("<Enter>") : Lang("OK"), Lang("<Esc>") : Lang("Cancel") } )
+        
+    def HandleKey(self, inKey):
+        handled = False
+        if hasattr(self, 'HandleKey'+self.state):
+            handled = getattr(self, 'HandleKey'+self.state)(inKey)
+        
+        if not handled and inKey == 'KEY_ESCAPE':
+            Layout.Inst().PopDialogue()
+            handled = True
+
+        return handled
+        
+    def HandleKeyINITIAL(self, inKey):
+        handled = self.testMenu.HandleKey(inKey)
+        if not handled and inKey == 'KEY_LEFT':
+            Layout.Inst().PopDialogue()
+            handled = True
+        return handled
+
+    def UpdateFieldsCUSTOM(self):
+        pane = self.Pane()
+        pane.ResetFields()
+        
+        pane.AddTitleField(Lang("Enter bridge  to Configure"))
+        pane.AddInputField(Lang("Bridge",  16), 'br0', 'bridge_name')
+        pane.AddKeyHelpField( { Lang("<Enter>") : Lang("OK"), Lang("<Esc>") : Lang("Exit") } )
+        if pane.CurrentInput() is None:
+            pane.InputIndexSet(0)
+     
+    def HandleKeyCUSTOM(self, inKey):
+        handled = True
+        pane = self.Pane()
+        if pane.CurrentInput() is None:
+            pane.InputIndexSet(0)
+        if inKey == 'KEY_ENTER':
+            inputValues = pane.GetFieldValues()
+            inbr = inputValues['bridge_name']
+            self.DoConfigure(inbr)
+            self.state = 'INITIAL'
+            
+        elif pane.CurrentInput().HandleKey(inKey):
+            pass # Leave handled as True
+        else:
+            handled = False
+        return handled     
+        
+    def HandleTestChoice(self,  inChoice = None):
+        if inChoice != None and inChoice != 'None':
+            self.state = 'CUSTOM'
+            self.inChoice = inChoice
+            self.UpdateFields()
+            self.Pane().InputIndexSet(0)
+        else:
+            self.DoConfigure()
+
+    def DoConfigure(self, inbr=None):
+        success = False
+        output = 'Cannot set the bridge'
+            
+        if inbr is not None  and inbr.strip() != '' and self.inChoice is not None and self.inChoice != 'None':
+            try:
+                Layout.Inst().TransientBanner(Lang('Configure...'))
+                (success,  output) = Data.Inst().DoConfigureBridge(self.inChoice, inbr)
+            except Exception,  e:
+                output = Lang(e)
+            
+        if success:
+            Layout.Inst().PushDialogue(InfoDialogue( Lang("Configure successful"), output))
+        else:
+            ovmLogFailure('Configure failed ', str(output))
+            Layout.Inst().PushDialogue(InfoDialogue( Lang("Configure failed"), output))
+
+
+
+class ovmFeatureNetworkBridge:
+    '''展示网络信息'''
+    def StatusUpdateHandler(cls, inPane):
+        data = Data.Inst()
+        inPane.AddTitleField(Lang("Configure Bridge"))
+        
+        nic_dict, configured_nics, ntp_dhcp = data.get_system_nics()
+        if len(nic_dict) == 0:
+            inPane.AddWrappedTextField(Lang("<No interface configured>"))
+        else:
+            for key in sorted(nic_dict.iterkeys()):
+                dev_interface,dev_bootproto,dev_vendor,dev_address,dev_driver,dev_conf_status,dev_bridge = nic_dict[key].split(",", 6)
+                nicStatuc,nicinfo = data.checkNIC(dev_interface)
+                if nicStatuc:
+                    inPane.AddStatusField(Lang('NIC', 16),  nicinfo['device'])
+                    inPane.AddStatusField(Lang('Bridge', 16),  str(nicinfo['type'])+':'+str(nicinfo['bridge']))
+
+        inPane.AddKeyHelpField( {
+            Lang("<Enter>") : Lang("Reconfigure"),
+            Lang("<F5>") : Lang("Refresh")
+        } )
+
+    @classmethod
+    def ActivateHandler(cls):
+        DialogueUtils.AuthenticatedOnly(lambda: Layout.Inst().PushDialogue(BridgeDialogue()))
+        #pass
+      
+    def Register(self):
+        
+        Importer.RegisterNamedPlugIn(
+            self,
+            'NETWORK_BRIDGE', # Key of this plugin for replacement, etc.
+            {
+                'title' : Lang('Configure Bridge'), # Name of this plugin for plugin list
+                'menuname' : 'MENU_NETWORK',
+                'menupriority' : 101,
+                'menutext' : Lang('Configure Bridge') ,
+                'needsauth' : True,
+                'statusupdatehandler' : self.StatusUpdateHandler,
+                'activatehandler' : self.ActivateHandler
+            }
+        )
+###
 
 class TestNetworkDialogue(Dialogue):
     def __init__(self):
@@ -546,7 +710,7 @@ class ovmFeatureDNS:
             {
                 'title' : Lang('Display DNS Servers'), # Name of this plugin for plugin list
                 'menuname' : 'MENU_NETWORK',
-                'menupriority' : 101,
+                'menupriority' : 102,
                 'menutext' : Lang('Display DNS Servers') ,
                 'statusupdatehandler' : self.StatusUpdateHandler
             }
@@ -579,7 +743,7 @@ class ovmFeatureTestNetwork:
             {
                 'title' : Lang('Test Network'), # Name of this plugin for plugin list
                 'menuname' : 'MENU_NETWORK',
-                'menupriority' : 102,
+                'menupriority' : 103,
                 'menutext' : Lang('Test Network') ,
                 'statusupdatehandler' : self.StatusUpdateHandler,
                 'activatehandler' : self.ActivateHandler
@@ -645,7 +809,7 @@ class ovmFeatureNTP:
             {
                 'title' : Lang('Network Time (NTP)'), # Name of this plugin for plugin list
                 'menuname' : 'MENU_NETWORK',
-                'menupriority' : 103,
+                'menupriority' : 104,
                 'menutext' : Lang('Network Time (NTP)') ,
                 'statusupdatehandler' : self.StatusUpdateHandler,
                 'activatehandler' : self.ActivateHandler
@@ -686,7 +850,7 @@ class ovmFeatureDisplayNICs:
             {
                 'title' : Lang('Display NICs'), # Name of this plugin for plugin list
                 'menuname' : 'MENU_NETWORK',
-                'menupriority' : 104,
+                'menupriority' : 105,
                 'menutext' : Lang('Display NICs') ,
                 'statusupdatehandler' : self.StatusUpdateHandler,
                 'activatehandler' : self.ActivateHandler
@@ -698,6 +862,7 @@ class ovmFeatureDisplayNICs:
 
 # Register this plugin when module is imported
 ovmFeatureNetworkInfo().Register()
+ovmFeatureNetworkBridge().Register()
 ovmFeatureDNS().Register()
 ovmFeatureTestNetwork().Register()
 ovmFeatureNTP().Register()
