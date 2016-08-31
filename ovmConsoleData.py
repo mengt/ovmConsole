@@ -1143,6 +1143,6 @@ class Data:
     def get_dev_status(self,ifname):
         cmd = "ip addr |grep "+ifname
         (status, output) = commands.getstatusoutput(cmd)
-        if status != 0 or 'NO-CARRIER' in output:
+        if status != 0 or 'NO-CARRIER' in output or 'state DOWN' in output:
             return '(No connected)'
         return '(connected)'
