@@ -48,7 +48,9 @@ class ovmFeatureSystemInfo:
 
         inPane.AddTitleField(Lang("Processor Details"))
         
-        inPane.AddStatusField(Lang("Logical CPUs", 27), str(len(data.host.host_CPUs())))
+        inPane.AddStatusField(Lang("Physical CPUs", 27), str(len(data.host.host_CPUs())))
+        inPane.AddStatusField(Lang("Processor CPUs", 27), str(data.host.cpu_processor()))
+        inPane.AddStatusField(Lang("Total Cores", 27), str(data.host.total_cores()))
         inPane.AddStatusField(Lang("Populated CPU Sockets", 27), str(data.dmi.cpu_populated_sockets()))
         inPane.AddStatusField(Lang("Total CPU Sockets", 27), str(data.dmi.cpu_sockets()))
 

@@ -177,11 +177,20 @@ class Data:
         })
         
         self.data['host']['host_CPUs'] = {}
+        self.data['host']['total_cores'] = 'unknown'
+        self.data['host']['cpu_processor'] = 'unknown'
         (status, output) = commands.getstatusoutput("cat /proc/cpuinfo |grep 'physical id'|sort |uniq|wc -l")
+        (coresstatus, coresoutput) = commands.getstatusoutput("cat /proc/cpuinfo| grep 'cpu cores'| uniq")
+        (processorstatus, processoroutput) = commands.getstatusoutput("cat /proc/cpuinfo| grep 'processor'| wc -l")
         (status2, output2) = commands.getstatusoutput("cat /proc/cpuinfo | grep name | cut -f2 -d:")
         if status == 0 and status2 == 0:
+            #self.data['host']['host_CPUs']=output.split('\n')[i].strip()
             for i in range(int(output)):
                 self.data['host']['host_CPUs'][i]=output2.split('\n')[i].strip()
+        if coresstatus == 0 :
+            self.data['host']['total_cores'] = coresoutput.split(':')[-1] +'x'+output
+        if processorstatus == 0 :
+            self.data['host']['cpu_processor'] = processoroutput
         self.data['derived']['managementpifs'] = []
 
         # Calculate the full version string
