@@ -1119,7 +1119,7 @@ class Data:
     def get_ip_address(self, ifname):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         try:
-            ip = socket.inet_ntoa(fcntl.ioctl(s.fileno(),0x8915,STRUCT.pack('256s', ifname[:15]))[20:24])
+            ip = socket.inet_ntoa(fcntl.ioctl(s.fileno(),0x8915,STRUCT.pack('256s', str(ifname[:15])))[20:24])
         except Exception,e:
             #raise e
             ip = ""
@@ -1128,7 +1128,7 @@ class Data:
     def get_netmask(self,ifname):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         try:
-            netmask = fcntl.ioctl(s, 0x891b, STRUCT.pack('256s', ifname))[20:24]
+            netmask = fcntl.ioctl(s, 0x891b, STRUCT.pack('256s', str(ifname)))[20:24]
             netmask = socket.inet_ntoa(netmask)
         except:
             netmask = ""
