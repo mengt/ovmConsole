@@ -177,11 +177,20 @@ class Data:
         })
         
         self.data['host']['host_CPUs'] = {}
+        self.data['host']['total_cores'] = 'unknown'
+        self.data['host']['cpu_processor'] = 'unknown'
         (status, output) = commands.getstatusoutput("cat /proc/cpuinfo |grep 'physical id'|sort |uniq|wc -l")
+        (coresstatus, coresoutput) = commands.getstatusoutput("cat /proc/cpuinfo| grep 'cpu cores'| uniq")
+        (processorstatus, processoroutput) = commands.getstatusoutput("cat /proc/cpuinfo| grep 'processor'| wc -l")
         (status2, output2) = commands.getstatusoutput("cat /proc/cpuinfo | grep name | cut -f2 -d:")
         if status == 0 and status2 == 0:
+            #self.data['host']['host_CPUs']=output.split('\n')[i].strip()
             for i in range(int(output)):
                 self.data['host']['host_CPUs'][i]=output2.split('\n')[i].strip()
+        if coresstatus == 0 :
+            self.data['host']['total_cores'] = coresoutput.split(':')[-1] +'x'+output
+        if processorstatus == 0 :
+            self.data['host']['cpu_processor'] = processoroutput
         self.data['derived']['managementpifs'] = []
 
         # Calculate the full version string
@@ -1110,7 +1119,7 @@ class Data:
     def get_ip_address(self, ifname):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         try:
-            ip = socket.inet_ntoa(fcntl.ioctl(s.fileno(),0x8915,STRUCT.pack('256s', ifname[:15]))[20:24])
+            ip = socket.inet_ntoa(fcntl.ioctl(s.fileno(),0x8915,STRUCT.pack('256s', str(ifname[:15])))[20:24])
         except Exception,e:
             #raise e
             ip = ""
@@ -1119,7 +1128,7 @@ class Data:
     def get_netmask(self,ifname):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         try:
-            netmask = fcntl.ioctl(s, 0x891b, STRUCT.pack('256s', ifname))[20:24]
+            netmask = fcntl.ioctl(s, 0x891b, STRUCT.pack('256s', str(ifname)))[20:24]
             netmask = socket.inet_ntoa(netmask)
         except:
             netmask = ""
